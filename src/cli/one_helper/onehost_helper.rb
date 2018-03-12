@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -20,6 +20,58 @@ require 'rubygems'
 
 class OneHostHelper < OpenNebulaHelper::OneHelper
     TEMPLATE_XPATH  = '//HOST/TEMPLATE'
+    HYBRID = {
+        :ec2 => {
+            :help => <<-EOT.unindent,
+                #-----------------------------------------------------------------------
+                # Supported EC2 AUTH ATTRIBUTTES:
+                #
+                #  REGION_NAME = <the name of the ec2 region>
+                #
+                #  EC2_ACCESS = <Your ec2 access key id>
+                #  EC2_SECRET = <Your ec2 secret key>
+                #
+                #  CAPACITY = [
+                #    M1_SMALL  = <number of machines m1.small>,
+                #    M1_XLARGE = <number of machines m1.xlarge>,
+                #    M1_LARGE  = <number of machines m1.large>
+                #  ]
+                #
+                # You can set any machine type supported by ec2
+                # See your ec2_driver.conf for more information
+                #
+                #-----------------------------------------------------------------------
+                EOT
+        },
+        :az => {
+            :help => <<-EOT.unindent,
+                #-----------------------------------------------------------------------
+                # Supported AZURE AUTH ATTRIBUTTES:
+                #
+                #  AZ_ID   = <azure classic id>
+                #  AZ_CERT = <azure classic certificate>
+                #
+                #  REGION_NAME = <the name of the azure region>
+                #
+                #  CAPACITY = [
+                #    Small = <number of small machines>,
+                #    Medium = <number of medium machines>,
+                #    Large = <number of large machines
+                #  ]
+                #
+                # You can set any machine type supported by azure classic
+                # See your az_driver.conf for more information
+                #
+                # Optionally you can set a endpoint
+                #
+                #  AZ_ENDPOINT = <endpoint address>
+                #
+                #-----------------------------------------------------------------------
+                EOT
+        }
+    }
+
+
     VERSION_XPATH   = "#{TEMPLATE_XPATH}/VERSION"
 
     def self.rname
@@ -164,6 +216,12 @@ class OneHostHelper < OpenNebulaHelper::OneHelper
         table
     end
 
+    def set_hybrid(type, path)
+        k = type.to_sym
+        if HYBRID.key?(k)
+            str = path.nil? ?  OpenNebulaHelper.editor_input(HYBRID[k][:help]): File.read(path)
+        end
+    end
 
     NUM_THREADS = 15
     def sync(host_ids, options)
@@ -230,9 +288,13 @@ class OneHostHelper < OpenNebulaHelper::OneHelper
 
             vm_mad = host['VM_MAD'].downcase
             remote_remotes = host['TEMPLATE/REMOTE_REMOTES']
+            state = host['STATE']
 
             # Skip this host from remote syncing if it's a PUBLIC_CLOUD host
             next if host['TEMPLATE/PUBLIC_CLOUD'] == 'YES'
+
+            # Skip this host from remote syncing if it's OFFLINE
+            next if Host::HOST_STATES[state.to_i] == 'OFFLINE'
 
             host_version=host['TEMPLATE/VERSION']
 
@@ -382,14 +444,19 @@ class OneHostHelper < OpenNebulaHelper::OneHelper
         puts
 
         CLIHelper.print_header(str_h1 % "HOST SHARES", false)
-
-        puts str % ["TOTAL MEM", OpenNebulaHelper.unit_to_str(host['HOST_SHARE/MAX_MEM'].to_i, {})]
-        puts str % ["USED MEM (REAL)", OpenNebulaHelper.unit_to_str(host['HOST_SHARE/USED_MEM'].to_i, {})]
-        puts str % ["USED MEM (ALLOCATED)", OpenNebulaHelper.unit_to_str(host['HOST_SHARE/MEM_USAGE'].to_i, {})]
-        puts str % ["TOTAL CPU", host['HOST_SHARE/MAX_CPU']]
-        puts str % ["USED CPU (REAL)", host['HOST_SHARE/USED_CPU']]
-        puts str % ["USED CPU (ALLOCATED)", host['HOST_SHARE/CPU_USAGE']]
         puts str % ["RUNNING VMS", host['HOST_SHARE/RUNNING_VMS']]
+
+        CLIHelper.print_header(str_h1 % "MEMORY", false)
+          puts str % ["  TOTAL", OpenNebulaHelper.unit_to_str(host['HOST_SHARE/TOTAL_MEM'].to_i, {})]
+          puts str % ["  TOTAL +/- RESERVED", OpenNebulaHelper.unit_to_str(host['HOST_SHARE/MAX_MEM'].to_i, {})]
+          puts str % ["  USED (REAL)", OpenNebulaHelper.unit_to_str(host['HOST_SHARE/USED_MEM'].to_i, {})]
+          puts str % ["  USED (ALLOCATED)", OpenNebulaHelper.unit_to_str(host['HOST_SHARE/MEM_USAGE'].to_i, {})]
+
+        CLIHelper.print_header(str_h1 % "CPU", false)
+          puts str % ["  TOTAL", host['HOST_SHARE/TOTAL_CPU']]
+          puts str % ["  TOTAL +/- RESERVED", host['HOST_SHARE/MAX_CPU']]
+          puts str % ["  USED (REAL)", host['HOST_SHARE/USED_CPU']]
+          puts str % ["  USED (ALLOCATED)", host['HOST_SHARE/CPU_USAGE']]
         puts
 
         datastores = host.to_hash['HOST']['HOST_SHARE']['DATASTORES']['DS']

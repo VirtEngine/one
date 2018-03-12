@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -15,7 +15,6 @@
 /* -------------------------------------------------------------------------- */
 
 #include "InformationManager.h"
-#include "NebulaLog.h"
 #include "Cluster.h"
 #include "Nebula.h"
 
@@ -42,7 +41,7 @@ extern "C" void * im_action_loop(void *arg)
 
     im = static_cast<InformationManager *>(arg);
 
-    im->am.loop(im->timer_period,0);
+    im->am.loop(im->timer_period);
 
     NebulaLog::log("InM",Log::INFO,"Information Manager stopped.");
 
@@ -116,29 +115,6 @@ int InformationManager::start()
     return rc;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-
-void InformationManager::do_action(const string &action, void * arg)
-{
-    if (action == ACTION_TIMER)
-    {
-        timer_action();
-    }
-    else if (action == ACTION_FINALIZE)
-    {
-        NebulaLog::log("InM",Log::INFO,"Stopping Information Manager...");
-
-        MadManager::stop();
-    }
-    else
-    {
-        ostringstream oss;
-        oss << "Unknown action name: " << action;
-
-        NebulaLog::log("InM", Log::ERROR, oss);
-    }
-}
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -179,7 +155,7 @@ int InformationManager::start_monitor(Host * host, bool update_remotes)
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void InformationManager::timer_action()
+void InformationManager::timer_action(const ActionRequest& ar)
 {
     static int mark = 0;
 
@@ -201,6 +177,14 @@ void InformationManager::timer_action()
     {
         NebulaLog::log("InM",Log::INFO,"--Mark--");
         mark = 0;
+    }
+
+    Nebula& nd          = Nebula::instance();
+    RaftManager * raftm = nd.get_raftm();
+
+    if ( !raftm->is_leader() && !raftm->is_solo() )
+    {
+        return;
     }
 
     hpool->clean_expired_monitoring();

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -24,6 +24,7 @@
 #include <time.h>
 
 class AuthRequest;
+class VirtualMachineNic;
 
 using namespace std;
 
@@ -121,7 +122,7 @@ public:
         int rc;
 
         rc  = VirtualNetwork::bootstrap(_db);
-        rc += _db->exec(BitMap<0>::bootstrap(vlan_table, oss));
+        rc += _db->exec_local_wr(BitMap<0>::bootstrap(vlan_table, oss));
 
         return rc;
     };
@@ -187,7 +188,7 @@ public:
      */
     int nic_attribute(
             PoolObjectSQL::ObjectType   ot,
-            VectorAttribute*            nic,
+            VirtualMachineNic *         nic,
             int                         nic_id,
             int                         uid,
             int                         vid,
@@ -200,7 +201,7 @@ public:
      */
     void authorize_nic(
             PoolObjectSQL::ObjectType   ot,
-            VectorAttribute *           nic,
+            VirtualMachineNic *         nic,
             int                         uid,
             AuthRequest *               ar);
 
@@ -235,24 +236,19 @@ public:
      *    @param rid the reservation VNET ID to store the reserved AR
      *    @param rsize number of addresses to reserve
      *    @param ar_id AR to make the reservation from
-     *    @param ip the first ip in the reservations
+     *    @param ip/mac the first ip/mac in the reservations
      *    @param err error message
      *    @return 0 on success
      */
     int reserve_addr_by_ip(int pid, int rid, unsigned int rsize,
             unsigned int ar_id, const string& ip, string& err);
-    /**
-     *  Reserve an address range
-     *    @param pid the parent VNET ID to get the leases from
-     *    @param rid the reservation VNET ID to store the reserved AR
-     *    @param rsize number of addresses to reserve
-     *    @param ar_id AR to make the reservation from
-     *    @param mac the first mac in the reservations
-     *    @param err error message
-     *    @return 0 on success
-     */
+
+    int reserve_addr_by_ip6(int pid, int rid, unsigned int rsize,
+            unsigned int ar_id, const string& ip, string& err);
+
     int reserve_addr_by_mac(int pid, int rid, unsigned int rsize,
             unsigned int ar_id, const string& mac, string& err);
+
 private:
     /**
      *  Holds the system-wide MAC prefix
@@ -301,7 +297,7 @@ private:
      *  Function to get a VirtualNetwork by its name, as provided by a VM
      *  template
      */
-    VirtualNetwork * get_nic_by_name(VectorAttribute * nic,
+    VirtualNetwork * get_nic_by_name(VirtualMachineNic * nic,
                                      const string&     name,
                                      int               _uidi,
                                      string&           error);

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -75,6 +75,10 @@ define(function(require) {
     "VM.recover": _commonActions.multipleAction('recover'),
     "VM.resched": _commonActions.multipleAction('resched'),
     "VM.unresched": _commonActions.multipleAction('unresched'),
+    "VM.lockM": _commonActions.multipleAction('lock', false),
+    "VM.lockU": _commonActions.multipleAction('lock', false),
+    "VM.lockA": _commonActions.multipleAction('lock', false),
+    "VM.unlock": _commonActions.multipleAction('unlock', false),
 
     "VM.chmod": _commonActions.singleAction('chmod'),
     "VM.rename": _commonActions.singleAction('rename'),
@@ -88,6 +92,7 @@ define(function(require) {
     "VM.attachnic": _commonActions.singleAction('attachnic'),
     "VM.detachnic": _commonActions.singleAction('detachnic'),
     "VM.resize": _commonActions.singleAction('resize'),
+    "VM.disk_resize": _commonActions.singleAction('disk_resize'),
     "VM.snapshot_create": _commonActions.singleAction('snapshot_create'),
     "VM.snapshot_revert": _commonActions.singleAction('snapshot_revert'),
     "VM.snapshot_delete": _commonActions.singleAction('snapshot_delete'),

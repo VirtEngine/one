@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -17,41 +17,43 @@
 define(function(require) {
 //  require('foundation.core');
 //  require('foundation.accordion');
-  require('datatables.net');
-  require('datatables.foundation');
-  var Locale = require('utils/locale');
-  var Config = require('sunstone-config');
-  var OpenNebula = require('opennebula');
-  var Sunstone = require('sunstone');
-  var Notifier = require('utils/notifier');
-  var QuotaWidgets = require('utils/quotas/quota-widgets');
-  var QuotaDefaults = require('utils/quotas/quota-defaults');
-  var Accounting = require('utils/accounting');
-  var Showback = require('utils/showback');
-  var Humanize = require('utils/humanize');
-  var QuotaLimits = require('utils/quotas/quota-limits');
-  var Graphs = require('utils/graphs');
-  var RangeSlider = require('utils/range-slider');
-  var DisksResize = require('utils/disks-resize');
-  var NicsSection = require('utils/nics-section');
-  var TemplateUtils = require('utils/template-utils');
-  var WizardFields = require('utils/wizard-fields');
-  var UserInputs = require('utils/user-inputs');
-  var CapacityInputs = require('tabs/templates-tab/form-panels/create/wizard-tabs/general/capacity-inputs');
-  var LabelsUtils = require('utils/labels/utils');
+  require("datatables.net");
+  require("datatables.foundation");
+  var Locale = require("utils/locale");
+  var Config = require("sunstone-config");
+  var OpenNebula = require("opennebula");
+  var Sunstone = require("sunstone");
+  var Notifier = require("utils/notifier");
+  var QuotaWidgets = require("utils/quotas/quota-widgets");
+  var QuotaDefaults = require("utils/quotas/quota-defaults");
+  var Accounting = require("utils/accounting");
+  var Showback = require("utils/showback");
+  var Humanize = require("utils/humanize");
+  var QuotaLimits = require("utils/quotas/quota-limits");
+  var RangeSlider = require("utils/range-slider");
+  var DisksResize = require("utils/disks-resize");
+  var NicsSection = require("utils/nics-section");
+  var VMGroupSection = require("utils/vmgroup-section");
+  var TemplateUtils = require("utils/template-utils");
+  var WizardFields = require("utils/wizard-fields");
+  var UserInputs = require("utils/user-inputs");
+  var CapacityInputs = require("tabs/templates-tab/form-panels/create/wizard-tabs/general/capacity-inputs");
+  var LabelsUtils = require("utils/labels/utils");
+  var DatastoresTable = require("tabs/datastores-tab/datatable");
+  var UniqueId = require("utils/unique-id");
 
-  var ProvisionVmsList = require('./provision-tab/vms/list');
-  var ProvisionTemplatesList = require('./provision-tab/templates/list');
-  var ProvisionFlowsList = require('./provision-tab/flows/list');
+  var ProvisionVmsList = require("./provision-tab/vms/list");
+  var ProvisionTemplatesList = require("./provision-tab/templates/list");
+  var ProvisionFlowsList = require("./provision-tab/flows/list");
 
   // Templates
-  var TemplateContent = require('hbs!./provision-tab/content');
-  var TemplateDashboardQuotas = require('hbs!./provision-tab/dashboard/quotas');
-  var TemplateDashboardGroupQuotas = require('hbs!./provision-tab/dashboard/group-quotas');
-  var TemplateDashboardVms = require('hbs!./provision-tab/dashboard/vms');
-  var TemplateDashboardGroupVms = require('hbs!./provision-tab/dashboard/group-vms');
+  var TemplateContent = require("hbs!./provision-tab/content");
+  var TemplateDashboardQuotas = require("hbs!./provision-tab/dashboard/quotas");
+  var TemplateDashboardGroupQuotas = require("hbs!./provision-tab/dashboard/group-quotas");
+  var TemplateDashboardVms = require("hbs!./provision-tab/dashboard/vms");
+  var TemplateDashboardGroupVms = require("hbs!./provision-tab/dashboard/group-vms");
 
-  var TAB_ID = require('./provision-tab/tabId');
+  var TAB_ID = require("./provision-tab/tabId");
   var FLOW_TEMPLATE_LABELS_COLUMN = 2;
 
   var povision_actions = {
@@ -62,7 +64,7 @@ define(function(require) {
         OpenNebula.Action.clear_cache("SERVICE");
         ProvisionFlowsList.show(0);
         var context = $("#provision_create_flow");
-        $("#flow_name", context).val('');
+        $("#flow_name", context).val("");
         $(".total_cost_div", context).hide();
         $(".provision-pricing-table", context).removeClass("selected");
       },
@@ -82,20 +84,22 @@ define(function(require) {
       callback: _clearVMCreate,
       error: Notifier.onError
     }
-  }
+  };
 
   function _clearVMCreate(){
     OpenNebula.Action.clear_cache("VM");
     ProvisionVmsList.show(0);
     var context = $("#provision_create_vm");
-    $("#vm_name", context).val('');
+    $("#vm_name", context).val("");
     $(".provision_selected_networks").html("");
+    $(".provision_vmgroup_selector").html("");
+    $(".provision_ds_selector").html("");
     $(".provision-pricing-table", context).removeClass("selected");
     $(".alert-box-error", context).hide();
     $(".total_cost_div", context).hide();
 
-    $('#provision_vm_instantiate_templates_owner_filter').val('all').change();
-    $('#provision_vm_instantiate_template_search').val('').trigger('input');
+    $("#provision_vm_instantiate_templates_owner_filter").val("all").change();
+    $("#provision_vm_instantiate_template_search").val("").trigger("input");
   }
 
   //$(document).foundation();
@@ -106,24 +110,24 @@ define(function(require) {
     var max_vms = (role_template.max_vms||20);
 
     context.html(
-      '<fieldset>' +
-        '<legend>' +
-          Locale.tr("Cardinality") + ' ' +
-          '<span class="provision_create_service_cost_div" hidden>'+
-            '<span class="cost_value"></span>'+
-            '<small> '+Locale.tr("COST")+' / ' + Locale.tr("HOUR") + '</small>'+
-          '</span>'+
-        '</legend>' +
-          '<div class="row">'+
-            '<div class="large-12 columns">'+
-              '<div class="cardinality_slider_div">'+
-              '</div>'+
-              '<div class="cardinality_no_slider_div">'+
-                '<label>'+Locale.tr("The cardinality for this role cannot be changed")+'</label>'+
-              '</div>'+
-            '</div>'+
-          '</div>'+
-      '</fieldset>');
+      "<fieldset>" +
+        "<legend>" +
+          Locale.tr("Cardinality") + " " +
+          "<span class=\"provision_create_service_cost_div\" hidden>"+
+            "<span class=\"cost_value\"></span>"+
+            "<small> "+Locale.tr("COST")+" / " + Locale.tr("HOUR") + "</small>"+
+          "</span>"+
+        "</legend>" +
+          "<div class=\"row\">"+
+            "<div class=\"large-12 columns\">"+
+              "<div class=\"cardinality_slider_div\">"+
+              "</div>"+
+              "<div class=\"cardinality_no_slider_div\">"+
+                "<label>"+Locale.tr("The cardinality for this role cannot be changed")+"</label>"+
+              "</div>"+
+            "</div>"+
+          "</div>"+
+      "</fieldset>");
 
       var cost = OpenNebula.Template.cost(template_json);
 
@@ -155,7 +159,7 @@ define(function(require) {
         $( ".cardinality_slider_div", context).off("input");
 
         if (has_cost) {
-          $( ".cardinality_slider_div", context).on("input", 'input', function() {
+          $( ".cardinality_slider_div", context).on("input", "input", function() {
             var cost_value = $(".provision_create_service_cost_div", context).data("cost")*$(this).val();
             $(".cost_value", context).html(cost_value.toFixed(2));
             _calculateFlowCost();
@@ -179,22 +183,47 @@ define(function(require) {
       memory_value = (capacity.MEMORY/1024).toFixed(2);
       memory_unit = "GB";
     } else {
-      memory_value = (capacity.MEMORY ? capacity.MEMORY : '-');
+      memory_value = (capacity.MEMORY ? capacity.MEMORY : "-");
       memory_unit = "MB";
     }
 
     context.html(
-      '<fieldset>' +
-        '<legend>' +
-          '<i class="fa fa-laptop fa-lg"></i> '+
-          Locale.tr("Capacity") + ' ' +
-          '<span class="provision_create_template_cost_div" hidden>' +
-            '<span class="cost_value">0.00</span> '+
-            '<small>'+Locale.tr("COST")+' / ' + Locale.tr("HOUR") + '</small>'+
-          '</span>'+
-        '</legend>' +
+      "<fieldset>" +
+        "<legend>" +
+          "<i class=\"fas fa-laptop fa-lg\"></i> "+
+          Locale.tr("Capacity") + " " +
+          "<span class=\"provision_create_template_cost_div\" hidden>" +
+            "<span class=\"cost_value\">0.00</span> "+
+            "<small>"+Locale.tr("COST")+" / " + Locale.tr("HOUR") + "</small>"+
+          "</span>"+
+        "</legend>" +
         CapacityInputs.html() +
-      '</fieldset>');
+      "</fieldset>");
+
+    if (Config.provision.dashboard.isEnabled("quotas")) {
+      $("#quotas-mem", context).show();
+      $("#quotas-cpu", context).show();
+      var quotaMem = false;
+      var quotaCpu = false;
+
+      var user = this.user;
+      if (!$.isEmptyObject(user.VM_QUOTA)){
+        var memUsed = parseFloat(user.VM_QUOTA.VM.MEMORY_USED);
+        var cpuUsed = parseFloat(user.VM_QUOTA.VM.CPU_USED);
+        if (user.VM_QUOTA.VM.MEMORY === "-1" || user.VM_QUOTA.VM.MEMORY === "-2"){
+          $("#quotas-mem", context).text(Humanize.size(memUsed * 1024) + " / ∞");
+        } else {
+          quotaMem = true;
+          $("#quotas-mem", context).text(Humanize.size(memUsed * 1024) + " / " + Humanize.size(user.VM_QUOTA.VM.MEMORY * 1024));
+        }
+        if (user.VM_QUOTA.VM.CPU === "-1" || user.VM_QUOTA.VM.CPU === "-2"){
+          $("#quotas-cpu", context).text(cpuUsed + " / ∞");
+        } else {
+          quotaCpu = true;
+          $("#quotas-cpu", context).text(cpuUsed + " / " + user.VM_QUOTA.VM.CPU);
+        }
+      }
+    }
 
     CapacityInputs.setup(context);
     CapacityInputs.fill(context, element);
@@ -215,6 +244,35 @@ define(function(require) {
 
       $(".memory_value", context).html(memory_value);
       $(".memory_unit", context).html(memory_unit);
+
+      if (!values.MEMORY){
+        values.MEMORY = 0;
+      }
+      if (!values.CPU){
+        values.CPU = 0;
+      }
+      if (!$.isEmptyObject(user.VM_QUOTA)){
+        if (quotaMem){
+          $("#quotas-mem", context).text( Humanize.size((parseFloat(user.VM_QUOTA.VM.MEMORY_USED) + parseFloat(values.MEMORY)) * 1024) + " / " + Humanize.size(user.VM_QUOTA.VM.MEMORY * 1024));
+          if ((parseFloat(values.MEMORY) + parseFloat(user.VM_QUOTA.VM.MEMORY_USED)) > user.VM_QUOTA.VM.MEMORY){
+            $("#quotas-mem", context).css("color", "red");
+          } else {
+            $("#quotas-mem", context).css("color", "black");
+          }
+        } else {
+          $("#quotas-mem", context).text( Humanize.size((parseFloat(user.VM_QUOTA.VM.MEMORY_USED) + parseFloat(values.MEMORY)) * 1024) + " / ∞");
+        }
+        if (quotaCpu){
+          $("#quotas-cpu", context).text(((parseFloat(user.VM_QUOTA.VM.CPU_USED) + parseFloat(values.CPU))).toFixed(2) + " / " + user.VM_QUOTA.VM.CPU);
+          if ((parseFloat(values.CPU) + parseFloat(user.VM_QUOTA.VM.CPU_USED)) > user.VM_QUOTA.VM.CPU){
+            $("#quotas-cpu", context).css("color", "red");
+          } else {
+            $("#quotas-cpu", context).css("color", "black");
+          }
+        } else {
+          $("#quotas-cpu", context).text(((parseFloat(user.VM_QUOTA.VM.CPU_USED) + parseFloat(values.CPU))).toFixed(2) + " / ∞");
+        }
+      }
     });
 
     var cost = 0;
@@ -272,6 +330,22 @@ define(function(require) {
 
       $(".total_cost_div .cost_value", context).text( (total).toFixed(2) );
     }
+
+    if (Config.provision.dashboard.isEnabled("quotas") && !$.isEmptyObject(user.VM_QUOTA)) {
+      if (!$("#quotas-disks").text().includes("/")){
+        var totalSize = parseFloat($("#quotas-disks").text());
+        if (this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE === "-1" || this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE === "-2"){
+          $("#quotas-disks").text(Humanize.size((parseFloat(this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE_USED) + totalSize) * 1024) + " / ∞");
+        } else {
+          $("#quotas-disks").text(Humanize.size((parseFloat(this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE_USED) + totalSize) * 1024) + " / " + Humanize.size(parseFloat(this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE) * 1024));
+          if ((parseFloat(this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE_USED) + totalSize) > parseFloat(this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE)){
+            $("#quotas-disks", context).css("color", "red");
+          } else {
+            $("#quotas-disks", context).css("color", "black");
+          }
+        }
+      }
+    }
   }
 
   function _calculateFlowCost(){
@@ -295,10 +369,14 @@ define(function(require) {
     $(".section_content").hide();
     $("#provision_dashboard").fadeIn();
 
-    $("#provision_dashboard").html('');
+    $("#provision_dashboard").html("");
 
     if (Config.provision.dashboard.isEnabled("vms")) {
       $("#provision_dashboard").append(TemplateDashboardVms());
+
+      if(!Config.isFeatureEnabled("cloud_vm_create")){
+        $(".provision_create_vm_button").hide();
+      }
 
       var start_time =  Math.floor(new Date().getTime() / 1000);
       // ms to s
@@ -313,22 +391,14 @@ define(function(require) {
         "start_time": start_time,
         "end_time": end_time,
         "userfilter": config["user_id"]
-      }
+      };
 
-      var no_table = true;
-
-      OpenNebula.VM.accounting({
-          success: function(req, response){
-              Accounting.fillAccounting($("#dashboard_vm_accounting"), req, response, no_table);
-          },
-          error: Notifier.onError,
-          data: options
-      });
 
       OpenNebula.VM.list({
         timeout: true,
         success: function (request, item_list){
           var total = 0;
+          var totalGroup = 0;
           var running = 0;
           var off = 0;
           var error = 0;
@@ -358,10 +428,14 @@ define(function(require) {
                   break;
               }
             }
-          })
+            else{
+              totalGroup += 1;
+            }
+          });
 
           var context = $("#provision_vms_dashboard");
-          $("#provision_dashboard_total", context).html(total);
+          $("#provision_dashboard_owner", context).html(total);
+          $("#provision_dashboard_group", context).html(totalGroup);
           $("#provision_dashboard_running", context).html(running);
           $("#provision_dashboard_off", context).html(off);
           $("#provision_dashboard_error", context).html(error);
@@ -386,18 +460,7 @@ define(function(require) {
       var options = {
         "start_time": start_time,
         "end_time": end_time
-      }
-
-      var no_table = true;
-
-      OpenNebula.VM.accounting({
-          success: function(req, response){
-              Accounting.fillAccounting($("#dashboard_group_vm_accounting"), req, response, no_table);
-          },
-          error: Notifier.onError,
-          data: options
-      });
-
+      };
 
       OpenNebula.VM.list({
         timeout: true,
@@ -432,7 +495,7 @@ define(function(require) {
                 default:
                   break;
               }
-          })
+          });
 
           var context = $("#provision_group_vms_dashboard");
           $("#provision_dashboard_group_total", context).html(total);
@@ -448,13 +511,14 @@ define(function(require) {
     if (Config.provision.dashboard.isEnabled("quotas")) {
       $("#provision_dashboard").append(TemplateDashboardQuotas());
 
-
+      var that = this;
       OpenNebula.User.show({
         data : {
             id: "-1"
         },
         success: function(request,user_json){
           var user = user_json.USER;
+          that.user = user;
 
           QuotaWidgets.initEmptyQuotas(user);
 
@@ -492,7 +556,7 @@ define(function(require) {
             $("#provision_quotas_dashboard").hide();
           }
         }
-      })
+      });
     }
 
     if (Config.provision.dashboard.isEnabled("groupquotas")) {
@@ -539,7 +603,7 @@ define(function(require) {
               $("#provision_dashboard_group_cpu_meter").val(cpu["percentage"]);
           }
         }
-      })
+      });
     }
   }
 
@@ -547,8 +611,8 @@ define(function(require) {
     OpenNebula.Action.clear_cache("VMTEMPLATE");
 
     ProvisionTemplatesList.updateDatatable(provision_vm_instantiate_templates_datatable);
-    $('#provision_vm_instantiate_templates_owner_filter').val('all').change();
-    $('#provision_vm_instantiate_template_search').val('').trigger('input');
+    $("#provision_vm_instantiate_templates_owner_filter").val("all").change();
+    $("#provision_vm_instantiate_template_search").val("").trigger("input");
 
     $(".provision_accordion_template .selected_template").hide();
     $(".provision_accordion_template .select_template").show();
@@ -557,9 +621,15 @@ define(function(require) {
     $("#provision_create_vm .provision_disk_selector").html("");
     $("#provision_create_vm .provision_disk_selector").removeData("template_json");
     $("#provision_create_vm .provision_network_selector").html("");
-    $("#provision_create_vm .provision_custom_attributes_selector").html("")
+    $("#provision_create_vm .provision_vmgroup_selector").html("");
+    $("#provision_create_vm .provision_ds_selector").html("");
+    $("#provision_create_vm .provision_add_vmgroup").show();
+    $("#provision_create_vm .provision_vmgroup").hide();
+    $("#provision_create_vm .provision_ds").hide();
 
-    $("#provision_create_vm li:not(.is-active) a[href='#provision_dd_template']").trigger("click")
+    $("#provision_create_vm .provision_custom_attributes_selector").html("");
+
+    $("#provision_create_vm li:not(.is-active) a[href='#provision_dd_template']").trigger("click");
 
     $("#provision_create_vm .total_cost_div").hide();
     $("#provision_create_vm .alert-box-error").hide();
@@ -576,13 +646,17 @@ define(function(require) {
     $("#provision_customize_flow_template", context).hide();
     $("#provision_customize_flow_template", context).html("");
 
-    $(".provision_network_selector", context).html("")
-    $(".provision_custom_attributes_selector", context).html("")
+    $(".provision_network_selector", context).html("");
+    $(".provision_vmgroup_selector", context).html("");
+    $(".provision_add_vmgroup", context).show();
+    $(".provision_vmgroup", context).hide();
+    //$(".provision_ds", context).hide();
+    $(".provision_custom_attributes_selector", context).html("");
 
     $(".provision_accordion_flow_template .selected_template", context).hide();
     $(".provision_accordion_flow_template .select_template", context).show();
 
-    $("li:not(.is-active) a[href='#provision_dd_flow_template']", context).trigger("click")
+    $("li:not(.is-active) a[href='#provision_dd_flow_template']", context).trigger("click");
 
     $(".total_cost_div", context).hide();
     $(".alert-box-error", context).hide();
@@ -592,16 +666,16 @@ define(function(require) {
   }
 
   function update_provision_flow_templates_datatable(datatable, timeout) {
-    datatable.html('<div class="text-center">'+
-      '<span class="fa-stack fa-5x">'+
-        '<i class="fa fa-cloud fa-stack-2x"></i>'+
-        '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
-      '</span>'+
-      '<br>'+
-      '<br>'+
-      '<span>'+
-      '</span>'+
-      '</div>');
+    datatable.html("<div class=\"text-center\">"+
+      "<span class=\"fa-stack fa-5x\">"+
+        "<i class=\"fas fa-cloud fa-stack-2x\"></i>"+
+        "<i class=\"fa  fa-spinner fa-spin fa-stack-1x fa-inverse\"></i>"+
+      "</span>"+
+      "<br>"+
+      "<br>"+
+      "<span>"+
+      "</span>"+
+      "</div>");
 
     setTimeout( function(){
       OpenNebula.ServiceTemplate.list({
@@ -609,30 +683,30 @@ define(function(require) {
         success: function (request, item_list){
           datatable.fnClearTable(true);
           if (item_list.length == 0) {
-            datatable.html('<div class="text-center">'+
-              '<span class="fa-stack fa-5x">'+
-                '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                '<i class="fa fa-info-circle fa-stack-1x fa-inverse"></i>'+
-              '</span>'+
-              '<br>'+
-              '<br>'+
-              '<span>'+
+            datatable.html("<div class=\"text-center\">"+
+              "<span class=\"fa-stack fa-5x\">"+
+                "<i class=\"fas fa-cloud fa-stack-2x\"></i>"+
+                "<i class=\"fas fa-info-circle fa-stack-1x fa-inverse\"></i>"+
+              "</span>"+
+              "<br>"+
+              "<br>"+
+              "<span>"+
                 Locale.tr("There are no templates available")+
-              '</span>'+
-              '</div>');
+              "</span>"+
+              "</div>");
           } else {
             datatable.fnAddData(item_list);
           }
 
           LabelsUtils.clearLabelsFilter(datatable, FLOW_TEMPLATE_LABELS_COLUMN);
-          var context = $('.labels-dropdown', datatable.closest('#provisionFlowInstantiateTemplatesRow'));
+          var context = $(".labels-dropdown", datatable.closest("#provisionFlowInstantiateTemplatesRow"));
           context.html("");
           LabelsUtils.insertLabelsMenu({
-            'context': context,
-            'dataTable': datatable,
-            'labelsColumn': FLOW_TEMPLATE_LABELS_COLUMN,
-            'labelsPath': 'DOCUMENT.TEMPLATE.LABELS',
-            'placeholder': Locale.tr("No labels defined")
+            "context": context,
+            "dataTable": datatable,
+            "labelsColumn": FLOW_TEMPLATE_LABELS_COLUMN,
+            "labelsPath": "DOCUMENT.TEMPLATE.LABELS",
+            "placeholder": Locale.tr("No labels defined")
           });
         },
         error: Notifier.onError
@@ -641,35 +715,36 @@ define(function(require) {
   }
 
   var _panels = [
-    require('./vms-tab/panels/info'),
-    require('./vms-tab/panels/capacity'),
-    require('./vms-tab/panels/storage'),
-    require('./vms-tab/panels/network'),
-    require('./vms-tab/panels/snapshots'),
-    require('./vms-tab/panels/placement'),
-    require('./vms-tab/panels/actions'),
-    require('./vms-tab/panels/conf'),
-    require('./vms-tab/panels/template'),
-    require('./vms-tab/panels/log')
+    require("./vms-tab/panels/info"),
+    require("./vms-tab/panels/capacity"),
+    require("./vms-tab/panels/storage"),
+    require("./vms-tab/panels/network"),
+    require("./vms-tab/panels/snapshots"),
+    require("./vms-tab/panels/placement"),
+    require("./vms-tab/panels/actions"),
+    require("./vms-tab/panels/conf"),
+    require("./vms-tab/panels/template"),
+    require("./vms-tab/panels/log")
   ];
 
 
   var _dialogs = [
     //require('./vms-tab/dialogs/deploy'),
     //require('./vms-tab/dialogs/migrate'),
-    require('./vms-tab/dialogs/resize'),
-    require('./vms-tab/dialogs/attach-disk'),
-    require('./vms-tab/dialogs/disk-snapshot'),
-    require('./vms-tab/dialogs/disk-saveas'),
-    require('./vms-tab/dialogs/attach-nic'),
-    require('./vms-tab/dialogs/snapshot'),
-    require('./vms-tab/dialogs/vnc'),
-    require('./vms-tab/dialogs/spice'),
+    require("./vms-tab/dialogs/resize"),
+    require("./vms-tab/dialogs/attach-disk"),
+    require("./vms-tab/dialogs/disk-snapshot"),
+    require("./vms-tab/dialogs/disk-saveas"),
+    require("./vms-tab/dialogs/attach-nic"),
+    require("./vms-tab/dialogs/revert"),
+    require("./vms-tab/dialogs/snapshot"),
+    require("./vms-tab/dialogs/vnc"),
+    require("./vms-tab/dialogs/spice"),
     //require('./vms-tab/dialogs/saveas-template')
-    require('./users-tab/dialogs/login-token')
+    require("./users-tab/dialogs/login-token")
   ];
 
-  var Actions = require('./vms-tab/actions');
+  var Actions = require("./vms-tab/actions");
 
   var Tab = {
     tabId: TAB_ID,
@@ -685,7 +760,8 @@ define(function(require) {
 
   function _setup() {
     $(document).ready(function(){
-      var tab_name = 'provision-tab';
+      var that = this;
+      var tab_name = "provision-tab";
       var tab = $("#"+tab_name);
 
       if (Config.isTabEnabled(tab_name)) {
@@ -705,18 +781,16 @@ define(function(require) {
         //
         // Dashboard
         //
-
-
         $(".configuration").on("click", function(){
-          $('li', '.provision-header').removeClass("active");
-        })
+          $("li", ".provision-header").removeClass("active");
+        });
 
         show_provision_dashboard();
 
-        $('.provision-header').on('click', 'a', function(){
+        $(".provision-header").on("click", "a", function(){
           Sunstone.showTab(TAB_ID);
-          $('li', '.provision-header').removeClass("active");
-          $(this).closest('li').addClass("active");
+          $("li", ".provision-header").removeClass("active");
+          $(this).closest("li").addClass("active");
         });
 
         $(document).on("click", ".provision_dashboard_button", function(){
@@ -748,13 +822,13 @@ define(function(require) {
           var logo;
 
           if (data.TEMPLATE.LOGO) {
-            logo = '<span class="provision-logo">'+
-                '<img  src="'+data.TEMPLATE.LOGO+'">'+
-              '</span>';
+            logo = "<span class=\"provision-logo\">"+
+                "<img  src=\""+data.TEMPLATE.LOGO+"\">"+
+              "</span>";
           } else {
-            logo = '<span>'+
-              '<i class="fa fa-fw fa-file-text-o"/>'+
-            '</span>';
+            logo = "<span>"+
+              "<i class=\"fas fa-fw fa-file-alt\"/>"+
+            "</span>";
           }
 
           var owner;
@@ -767,56 +841,56 @@ define(function(require) {
             owner = Locale.tr("system");
           }
 
-          var li = $('<div class="column">' +
-              '<ul class="provision-pricing-table only-one hoverable menu vertical text-center" opennebula_id="'+data.ID+'">'+
-                '<li class="provision-title" title="'+TemplateUtils.htmlEncode(data.NAME)+'">'+
-                  '<a href="">' + TemplateUtils.htmlEncode(data.NAME) + '</a>' +
-                '</li>'+
-                '<li class="provision-bullet-item">'+
+          var li = $("<div class=\"column\">" +
+              "<ul class=\"provision-pricing-table only-one hoverable menu vertical text-center\" opennebula_id=\""+data.ID+"\">"+
+                "<li class=\"provision-title\" title=\""+TemplateUtils.htmlEncode(data.NAME)+"\">"+
+                  "<a href=\"\">" + TemplateUtils.htmlEncode(data.NAME) + "</a>" +
+                "</li>"+
+                "<li class=\"provision-bullet-item\">"+
                   logo +
-                '</li>'+
-                '<li class="provision-bullet-item">'+
-                  (TemplateUtils.htmlEncode(data.TEMPLATE.DESCRIPTION) || '...')+
-                '</li>'+
-                '<li class="provision-bullet-item-last text-left">'+
-                  '<span>'+
-                    '<i class="fa fa-fw fa-lg fa-user"/> '+
+                "</li>"+
+                "<li class=\"provision-bullet-item\">"+
+                  (TemplateUtils.htmlEncode(data.TEMPLATE.DESCRIPTION) || "...")+
+                "</li>"+
+                "<li class=\"provision-bullet-item-last text-left\">"+
+                  "<span>"+
+                    "<i class=\"fas fa-fw fa-lg fa-user\"/> "+
                     owner+
-                  '</span>'+
-                '</li>'+
-              '</ul>'+
-            '</div>').appendTo($("#"+tableID+'_ul'));
+                  "</span>"+
+                "</li>"+
+              "</ul>"+
+            "</div>").appendTo($("#"+tableID+"_ul"));
 
           $(".provision-pricing-table", li).data("opennebula", aData);
         }
 
         function initializeTemplateCards(context, tableID) {
           // create a thumbs container if it doesn't exist. put it in the dataTables_scrollbody div
-          if (context.$('tr', {"filter": "applied"} ).length == 0) {
-            context.html('<div class="text-center">'+
-              '<span class="fa-stack fa-5x">'+
-                '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                '<i class="fa fa-info-circle fa-stack-1x fa-inverse"></i>'+
-              '</span>'+
-              '<br>'+
-              '<br>'+
-              '<span>'+
+          if (context.$("tr", {"filter": "applied"} ).length == 0) {
+            context.html("<div class=\"text-center\">"+
+              "<span class=\"fa-stack fa-5x\">"+
+                "<i class=\"fas fa-cloud fa-stack-2x\"></i>"+
+                "<i class=\"fas fa-info-circle fa-stack-1x fa-inverse\"></i>"+
+              "</span>"+
+              "<br>"+
+              "<br>"+
+              "<span>"+
                 Locale.tr("There are no templates available")+
-              '</span>'+
-              '</div>');
+              "</span>"+
+              "</div>");
           } else {
-            $('#'+tableID+'_table').html(
-              '<div id="'+tableID+'_ul" class="row large-up-4 medium-up-3 small-up-1"></div>');
+            $("#"+tableID+"_table").html(
+              "<div id=\""+tableID+"_ul\" class=\"row large-up-4 medium-up-3 small-up-1\"></div>");
           }
 
           return true;
         }
 
 
-        provision_vm_instantiate_templates_datatable = $('#provision_vm_instantiate_templates_table').dataTable({
+        provision_vm_instantiate_templates_datatable = $("#provision_vm_instantiate_templates_table").dataTable({
           "iDisplayLength": 6,
           "bAutoWidth": false,
-          "sDom" : '<"H">t<"F"lp>',
+          "sDom" : "<\"H\">t<\"F\"lp>",
           "aLengthMenu": [[6, 12, 36, 72], [6, 12, 36, 72]],
           "aoColumnDefs": [
               { "bVisible": false, "aTargets": ["all"]}
@@ -835,7 +909,7 @@ define(function(require) {
                     owner = "system";
                   }
 
-                  if (type === 'filter') {
+                  if (type === "filter") {
                     // In order to make "mine" search work
                     if(owner == "mine"){
                       return Locale.tr("mine");
@@ -862,14 +936,14 @@ define(function(require) {
           }
         });
 
-        $('#provision_vm_instantiate_template_search').on('input',function(){
+        $("#provision_vm_instantiate_template_search").on("input",function(){
           provision_vm_instantiate_templates_datatable.fnFilter( $(this).val() );
         });
 
-        $('#provision_vm_instantiate_templates_owner_filter').on('change', function(){
+        $("#provision_vm_instantiate_templates_owner_filter").on("change", function(){
           switch($(this).val()){
             case "all":
-              provision_vm_instantiate_templates_datatable.fnFilter('', 2);
+              provision_vm_instantiate_templates_datatable.fnFilter("", 2);
               break;
             default:
               provision_vm_instantiate_templates_datatable.fnFilter("^" + $(this).val() + "$", 2, true, false);
@@ -894,14 +968,18 @@ define(function(require) {
             DisksResize.insert({
               template_json: template_json,
               disksContext: disksContext,
-              force_persistent: $(this).prop('checked'),
-              cost_callback: _calculateCost
+              force_persistent: $(this).prop("checked"),
+              cost_callback: _calculateCost,
+              uinput_mb: true
             });
           }
         });
 
         tab.on("click", "#provision_create_vm .provision_select_template .provision-pricing-table.only-one" , function(){
           var create_vm_context = $("#provision_create_vm");
+          var that = this;
+
+          that.template_base_json = {};
 
           if ($(this).hasClass("selected")){
             //$(".provision_disk_selector", create_vm_context).html("");
@@ -916,16 +994,30 @@ define(function(require) {
 
             $(".provision_accordion_template .selected_template").show();
             $(".provision_accordion_template .select_template").hide();
-            $(".provision_accordion_template .selected_template_name").html(TemplateUtils.htmlEncode(template_json.VMTEMPLATE.NAME))
+            $(".provision_accordion_template .selected_template_name").html(TemplateUtils.htmlEncode(template_json.VMTEMPLATE.NAME));
             if (template_json.VMTEMPLATE.TEMPLATE.LOGO) {
-              $(".provision_accordion_template .selected_template_logo").html('<img  src="'+TemplateUtils.htmlEncode(template_json.VMTEMPLATE.TEMPLATE.LOGO)+'">');
+              $(".provision_accordion_template .selected_template_logo").html("<img  src=\""+TemplateUtils.htmlEncode(template_json.VMTEMPLATE.TEMPLATE.LOGO)+"\">");
             } else {
-              $(".provision_accordion_template .selected_template_logo").html('<i class="fa fa-file-text-o fa-lg"/> ');
+              $(".provision_accordion_template .selected_template_logo").html("<i class=\"fas fa-file-alt fa-lg\"/> ");
             }
 
             $("#provision_create_vm .total_cost_div").hide();
 
             $(".provision_accordion_template a").first().trigger("click");
+
+            $("#provision_create_vm .provision_vmgroup").show();
+            $("#provision_create_vm .provision_ds").show();
+
+            OpenNebula.Template.show({
+              data : {
+                id: template_id,
+                extended: false
+              },
+              timeout: true,
+              success: function (request, template_json) {
+                that.template_base_json= template_json;
+              }
+            });
 
             OpenNebula.Template.show({
               data : {
@@ -942,28 +1034,84 @@ define(function(require) {
                 disksContext.data("template_json", template_json);
 
                 if (Config.provision.create_vm.isEnabled("disk_resize")) {
+                  var pers = $("input.instantiate_pers", create_vm_context).prop("checked");
+                  if(pers == undefined){
+                    pers = false;
+                  }
                   DisksResize.insert({
+                    template_base_json: that.template_base_json,
                     template_json: template_json,
                     disksContext: disksContext,
-                    force_persistent: $("input.instantiate_pers", create_vm_context).prop("checked"),
-                    cost_callback: _calculateCost
+                    force_persistent: pers,
+                    cost_callback: _calculateCost,
+                    uinput_mb: true
                   });
+                  if (Config.provision.dashboard.isEnabled("quotas") && !$.isEmptyObject(user.VM_QUOTA)) {
+                    $("#quotas-disks").show();
+                    if (this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE === "-1" || this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE === "-2"){
+                      $("#quotas-disks").text(Humanize.size(parseFloat(this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE_USED) * 1024) + " / " + "∞");
+                    } else {
+                      $("#quotas-disks").text(Humanize.size(parseFloat(this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE_USED) * 1024) + " / " + Humanize.size(parseFloat(this.user.VM_QUOTA.VM.SYSTEM_DISK_SIZE) * 1024));
+                    }
+                    $("input", disksContext).change();
+                  }
                 } else {
                   disksContext.html("");
                 }
 
                 if (Config.provision.create_vm.isEnabled("network_select")) {
                   NicsSection.insert(template_json, create_vm_context,
-                    {'securityGroups': Config.isFeatureEnabled("secgroups")});
+                    {"securityGroups": Config.isFeatureEnabled("secgroups")});
                 } else {
                   $(".provision_network_selector", create_vm_context).html("");
+                }
+
+                if (Config.provision.create_vm.isEnabled("vmgroup_select")) {
+                  $(".provision_vmgroup_selector", create_vm_context).html("");
+                  $("#provision_create_vm .provision_add_vmgroup").show();
+                  VMGroupSection.insert(template_json, $(".vmgroupContext", create_vm_context));
+                } else {
+                  $(".provision_vmgroup_selector", create_vm_context).html("");
+                  $(".provision_vmgroup", create_vm_context).hide();
+                }
+
+                if (Config.provision.create_vm.isEnabled("datastore_select")) {
+                  $(".provision_ds_selector", create_vm_context).html("");
+                  var options = {
+                    "select": true,
+                    "selectOptions": {
+                      "multiple_choice": true
+                    }
+                  };
+                  this.datastoresTable = new DatastoresTable("DatastoresTable" + UniqueId.id(), options);
+                  $(".provision_ds_selector", create_vm_context).html(this.datastoresTable.dataTableHTML);
+                  this.datastoresTable.initialize();
+                  this.datastoresTable.filter("system", 10);
+                  this.datastoresTable.refreshResourceTableSelect();
+                  if(template_json.VMTEMPLATE.TEMPLATE.SCHED_DS_REQUIREMENTS){
+                    var dsReqJSON = template_json.VMTEMPLATE.TEMPLATE.SCHED_DS_REQUIREMENTS;
+                    var dsReq = TemplateUtils.escapeDoubleQuotes(dsReqJSON);
+                    var ds_id_regexp = /(\s|\||\b)ID=\\"([0-9]+)\\"/g;
+                    var ds = [];
+                    while (match = ds_id_regexp.exec(dsReq)) {
+                      ds.push(match[2]);
+                    }
+                    var selectedResources = {
+                      ids : ds
+                    };
+                    this.datastoresTable.selectResourceTableSelect(selectedResources);
+                    $(".provision_ds_selector", create_vm_context).data("dsTable", this.datastoresTable);
+                  }
+                } else {
+                  $(".provision_ds_selector", create_vm_context).html("");
+                  $(".provision_ds", create_vm_context).hide();
                 }
 
                 if (template_json.VMTEMPLATE.TEMPLATE.USER_INPUTS) {
                   UserInputs.vmTemplateInsert(
                       $(".provision_custom_attributes_selector", create_vm_context),
                       template_json,
-                      {text_header: '<i class="fa fa-gears"></i> '+Locale.tr("Custom Attributes")});
+                      {text_header: "<i class=\"fas fa-gears\"></i> "+Locale.tr("Custom Attributes")});
 
                 } else {
                   $(".provision_custom_attributes_selector", create_vm_context).html("");
@@ -977,18 +1125,18 @@ define(function(require) {
 
             return false;
           }
-        })
+        });
 
         tab.on("click", "#provision_create_vm .provision-pricing-table.only-one" , function(){
           if ($(this).hasClass("selected")){
             //$(this).removeClass("selected");
           } else {
-            $(".provision-pricing-table", $(this).parents(".dataTable")).removeClass("selected")
+            $(".provision-pricing-table", $(this).parents(".dataTable")).removeClass("selected");
             $(this).addClass("selected");
           }
 
           return false;
-        })
+        });
 
         $("#provision_create_vm").submit(function(){
           var context = $(this);
@@ -1001,11 +1149,32 @@ define(function(require) {
 
           var vm_name = $("#vm_name", context).val();
           var nics = NicsSection.retrieve(context);
+
           var disks = DisksResize.retrieve($(".provision_disk_selector", context));
 
           var extra_info = {
-            'vm_name' : vm_name,
-            'template': {
+            "vm_name" : vm_name,
+            "template": {
+            }
+          };
+
+          var vmgroup = VMGroupSection.retrieve($(".vmgroupContext", context));
+
+          if(vmgroup){
+            $.extend(extra_info.template, vmgroup);
+          }
+
+          var dsTable = $(".provision_ds_selector", context).data("dsTable");
+          if(dsTable != undefined){
+            var req_string = [];
+            var ds = dsTable.retrieveResourceTableSelect();
+            if(ds){
+              $.each(ds, function(index, dsId) {
+                req_string.push("ID=\"" + dsId + "\"");
+              });
+              req_string = req_string.join(" | ");
+              req_string = TemplateUtils.escapeDoubleQuotes(req_string);
+              extra_info.template.SCHED_DS_REQUIREMENTS = req_string;
             }
           }
 
@@ -1025,7 +1194,7 @@ define(function(require) {
           var user_inputs_values = WizardFields.retrieve($(".provision_custom_attributes_selector", $(this)));
 
           if (!$.isEmptyObject(user_inputs_values)) {
-             $.extend(extra_info.template, user_inputs_values)
+             $.extend(extra_info.template, user_inputs_values);
           }
 
           var action;
@@ -1038,23 +1207,23 @@ define(function(require) {
 
           Sunstone.runAction("Provision."+action, template_id, extra_info);
           return false;
-        })
+        });
 
         $(document).on("click", ".provision_create_vm_button", function(){
           show_provision_create_vm();
         });
 
-        Foundation.reflow($('#provision_create_vm'));
+        Foundation.reflow($("#provision_create_vm"));
 
 
         //
         // Create FLOW
         //
 
-        provision_flow_templates_datatable = $('#provision_flow_templates_table').dataTable({
+        provision_flow_templates_datatable = $("#provision_flow_templates_table").dataTable({
           "iDisplayLength": 6,
           "bAutoWidth": false,
-          "sDom" : '<"H">t<"F"lp>',
+          "sDom" : "<\"H\">t<\"F\"lp>",
           "aLengthMenu": [[6, 12, 36, 72], [6, 12, 36, 72]],
           "aaSorting"  : [[1, "asc"]],
           "aoColumnDefs": [
@@ -1067,21 +1236,21 @@ define(function(require) {
           ],
           "fnPreDrawCallback": function (oSettings) {
             // create a thumbs container if it doesn't exist. put it in the dataTables_scrollbody div
-            if (this.$('tr', {"filter": "applied"} ).length == 0) {
-              this.html('<div class="text-center">'+
-                '<span class="fa-stack fa-5x">'+
-                  '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                  '<i class="fa fa-info-circle fa-stack-1x fa-inverse"></i>'+
-                '</span>'+
-                '<br>'+
-                '<br>'+
-                '<span>'+
+            if (this.$("tr", {"filter": "applied"} ).length == 0) {
+              this.html("<div class=\"text-center\">"+
+                "<span class=\"fa-stack fa-5x\">"+
+                  "<i class=\"fas fa-cloud fa-stack-2x\"></i>"+
+                  "<i class=\"fas fa-info-circle fa-stack-1x fa-inverse\"></i>"+
+                "</span>"+
+                "<br>"+
+                "<br>"+
+                "<span>"+
                   Locale.tr("There are no templates available")+
-                '</span>'+
-                '</div>');
+                "</span>"+
+                "</div>");
             } else {
               $("#provision_flow_templates_table").html(
-                '<div id="provision_flow_templates_ul" class="row large-up-4 medium-up-3 small-up-1"></div>');
+                "<div id=\"provision_flow_templates_ul\" class=\"row large-up-4 medium-up-3 small-up-1\"></div>");
             }
 
             return true;
@@ -1095,27 +1264,27 @@ define(function(require) {
             if (body.roles) {
               $.each(body.roles, function(index, role) {
                 roles_li +=
-                  '<li class="provision-bullet-item">'+
-                    '<i class="fa fa-fw fa-cube"/> '+
+                  "<li class=\"provision-bullet-item\">"+
+                    "<i class=\"fas fa-fw fa-cube\"/> "+
                     role.name+
-                    '<span class="right">'+role.cardinality+" VMs</span>"+
-                  '</li>';
+                    "<span class=\"right\">"+role.cardinality+" VMs</span>"+
+                  "</li>";
               });
             }
 
-            var li = $('<div class="column">'+
-                '<ul class="provision-pricing-table hoverable only-one menu vertical" opennebula_id="'+data.ID+'">'+
-                  '<li class="provision-title" title="'+TemplateUtils.htmlEncode(data.NAME)+'">'+
-                    '<a href="">' +
+            var li = $("<div class=\"column\">"+
+                "<ul class=\"provision-pricing-table hoverable only-one menu vertical\" opennebula_id=\""+data.ID+"\">"+
+                  "<li class=\"provision-title\" title=\""+TemplateUtils.htmlEncode(data.NAME)+"\">"+
+                    "<a href=\"\">" +
                       TemplateUtils.htmlEncode(data.NAME) +
-                    '</a>' +
-                  '</li>'+
+                    "</a>" +
+                  "</li>"+
                   roles_li +
-                  '<li class="provision-bullet-item">'+
-                    (TemplateUtils.htmlEncode(data.TEMPLATE.DESCRIPTION) || '')+
-                  '</li>'+
-                '</ul>'+
-              '</div>').appendTo($("#provision_flow_templates_ul"));
+                  "<li class=\"provision-bullet-item\">"+
+                    (TemplateUtils.htmlEncode(data.TEMPLATE.DESCRIPTION) || "")+
+                  "</li>"+
+                "</ul>"+
+              "</div>").appendTo($("#provision_flow_templates_ul"));
 
             $(".provision-pricing-table", li).data("opennebula", aData);
 
@@ -1123,9 +1292,9 @@ define(function(require) {
           }
         });
 
-        $('#provision_create_flow_template_search').on('input',function(){
+        $("#provision_create_flow_template_search").on("input",function(){
           provision_flow_templates_datatable.fnFilter( $(this).val() );
-        })
+        });
 
         $("#provision_create_flow_template_refresh_button").click(function(){
           OpenNebula.Action.clear_cache("SERVICE_TEMPLATE");
@@ -1155,37 +1324,36 @@ define(function(require) {
 
             $(".provision_accordion_flow_template .selected_template").show();
             $(".provision_accordion_flow_template .select_template").hide();
-            $(".provision_accordion_flow_template .selected_template_name").html(TemplateUtils.htmlEncode(data.DOCUMENT.NAME))
-            $(".provision_accordion_flow_template .selected_template_logo").html('<i class="fa fa-cubes fa-lg"/> ');
+            $(".provision_accordion_flow_template .selected_template_name").html(TemplateUtils.htmlEncode(data.DOCUMENT.NAME));
+            $(".provision_accordion_flow_template .selected_template_logo").html("<i class=\"fas fa-cubes fa-lg\"/> ");
             $(".provision_accordion_flow_template a").first().trigger("click");
 
             var context = $("#provision_create_flow");
 
             if (body.custom_attrs) {
               UserInputs.serviceTemplateInsert(
-                $(".provision_network_selector", context),
-                data);
+                $(".provision_network_selector", context), data);
             } else {
-              $(".provision_network_selector", context).html("")
-              $(".provision_custom_attributes_selector", context).html("")
+              $(".provision_network_selector", context).html("");
+              $(".provision_custom_attributes_selector", context).html("");
             }
 
             $.each(body.roles, function(index, role){
               var context = $(
-                '<div id="provision_create_flow_role_'+index+'" class="left medium-6 columns provision_create_flow_role">'+
-                  '<h5>'+
-                    '<i class="fa fa-cube fa-lg"></i> '+
+                "<div id=\"provision_create_flow_role_"+index+"\" class=\"left medium-6 columns provision_create_flow_role\">"+
+                  "<h5>"+
+                    "<i class=\"fas fa-cube fa-lg\"></i> "+
                     TemplateUtils.htmlEncode(role.name)+
-                  '</h5>'+
-                  '<div class="row">'+
-                    '<div class="provision_cardinality_selector large-12 columns">'+
-                    '</div>'+
-                  '</div>'+
-                  '<div class="row">'+
-                    '<div class="provision_custom_attributes_selector large-12 columns">'+
-                    '</div>'+
-                  '</div>'+
-              '</div>').appendTo($("#provision_customize_flow_template"))
+                  "</h5>"+
+                  "<div class=\"row\">"+
+                    "<div class=\"provision_cardinality_selector large-12 columns\">"+
+                    "</div>"+
+                  "</div>"+
+                  "<div class=\"row\">"+
+                    "<div class=\"provision_custom_attributes_selector large-12 columns\">"+
+                    "</div>"+
+                  "</div>"+
+              "</div>").appendTo($("#provision_customize_flow_template"));
 
               context.data("opennebula", role);
 
@@ -1198,7 +1366,7 @@ define(function(require) {
                     extended: true
                 },
                 success: function(request,template_json){
-                  var role_context = $(role_html_id)
+                  var role_context = $(role_html_id);
 
                   generate_cardinality_selector(
                     $(".provision_cardinality_selector", context),
@@ -1209,31 +1377,31 @@ define(function(require) {
                     UserInputs.vmTemplateInsert(
                         $(".provision_custom_attributes_selector", role_context),
                         template_json,
-                        {text_header: '<i class="fa fa-gears"></i> '+Locale.tr("Custom Attributes")});
+                        {text_header: "<i class=\"fas fa-gears\"></i> "+Locale.tr("Custom Attributes")});
 
                   } else {
                     $(".provision_custom_attributes_selector", role_context).html("");
                   }
                 }
-              })
+              });
 
 
-            })
+            });
 
             return false;
           }
-        })
+        });
 
         tab.on("click", "#provision_create_flow .provision-pricing-table.only-one" , function(){
           if ($(this).hasClass("selected")){
             //$(this).removeClass("selected");
           } else {
-            $(".provision-pricing-table", $(this).parents(".dataTable")).removeClass("selected")
+            $(".provision-pricing-table", $(this).parents(".dataTable")).removeClass("selected");
             $(this).addClass("selected");
           }
 
           return false;
-        })
+        });
 
         $("#provision_create_flow").submit(function(){
           var context = $(this);
@@ -1261,14 +1429,14 @@ define(function(require) {
               "cardinality": cardinality,
               "user_inputs_values": user_inputs_values
             }));
-          })
+          });
 
           var extra_info = {
-            'merge_template': {
+            "merge_template": {
               "roles" : roles,
               "custom_attrs_values": custom_attrs
             }
-          }
+          };
 
           if (flow_name){
             extra_info["merge_template"]["name"] = flow_name;
@@ -1276,13 +1444,13 @@ define(function(require) {
 
           Sunstone.runAction("Provision.Flow.instantiate", template_id, extra_info);
           return false;
-        })
+        });
 
         $(".provision_create_flow_button").on("click", function(){
           show_provision_create_flow();
         });
 
-        Foundation.reflow($('#provision_create_flow'));
+        Foundation.reflow($("#provision_create_flow"));
       }
     });
   }

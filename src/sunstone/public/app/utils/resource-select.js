@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -44,7 +44,7 @@ define(function(require) {
    */
   var _insert = function(opts) {
     var Resource = require('opennebula/' + opts.resourceName.toLowerCase());
-    opts.context.html('<i class="fa fa-spinner fa-spin"></i>');
+    opts.context.html('<i class="fas fa-spinner fa-spin"></i>');
 
     Resource.list({
       timeout: true,
@@ -85,6 +85,10 @@ define(function(require) {
             }
           } else {
             add = true;
+          }
+
+          if (resourceXMLRoot === "DATASTORE" && elem.TEMPLATE.TYPE === "SYSTEM_DS"){
+            add = false;
           }
 
           if (add === true) {

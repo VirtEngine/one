@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -169,7 +169,7 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
         end
 
         vm_nics.each do |nic|
-            ["IP", "IP6_GLOBAL", "IP6_ULA",
+            ["IP", "IP6_GLOBAL", "IP6_ULA", "IP6",
              "VROUTER_IP", "VROUTER_IP6_GLOBAL", "VROUTER_IP6_ULA"].each do |attr|
                 if nic.has_key?(attr)
                     ips.push(nic[attr])
@@ -190,6 +190,20 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
         else
             return ips.join(",")
         end
+    end
+
+    def retrieve_snapshot_id(vm_id, id)
+        vm = retrieve_resource(vm_id)
+        vm.info
+
+        if !/\A\d+\z/.match(id)
+            ids = vm.retrieve_elements("/VM/TEMPLATE/SNAPSHOT[NAME='#{id}']/SNAPSHOT_ID")
+            return [-1, "#{id} not found or duplicated"] if ids.nil? || ids.size > 1
+        else
+            return [0, id.to_i]
+        end
+
+        [0, ids[0].to_i]
     end
 
     def format_pool(options)
@@ -502,6 +516,7 @@ in the frontend machine.
         puts str % ["GROUP", vm['GNAME']]
         puts str % ["STATE", vm.state_str]
         puts str % ["LCM_STATE", vm.lcm_state_str]
+        puts str % ["LOCK", OpenNebulaHelper.level_lock_to_str(vm['LOCK/LOCKED'])]
         puts str % ["RESCHED", OpenNebulaHelper.boolean_to_str(vm['RESCHED'])]
         puts str % ["HOST",
             vm['/VM/HISTORY_RECORDS/HISTORY[last()]/HOSTNAME']] if
@@ -578,7 +593,7 @@ in the frontend machine.
             vm_disks = [vm_hash['VM']['TEMPLATE']['DISK']].flatten
         end
 
-        if vm.has_elements?("/VM/TEMPLATE/CONTEXT")
+        if vm.has_elements?("/VM/TEMPLATE/CONTEXT") && vm["/VM/HISTORY_RECORDS/HISTORY[1]/VM_MAD"] != 'vcenter'
             context_disk = vm_hash['VM']['TEMPLATE']['CONTEXT']
 
             context_disk["IMAGE"]     = "CONTEXT"
@@ -752,7 +767,7 @@ in the frontend machine.
 
                 next if nic.has_key?("CLI_DONE")
 
-                ["IP6_LINK", "IP6_ULA", "IP6_GLOBAL"].each do |attr|
+                ["IP6_LINK", "IP6_ULA", "IP6_GLOBAL", "IP6"].each do |attr|
                     if nic.has_key?(attr)
                         shown_ips << nic[attr]
 
@@ -1015,16 +1030,29 @@ in the frontend machine.
                 d["SEQ"]
             end
 
-            column :HOST, "Host name of the VM container", :left, :size=>15 do |d|
+            column :UID, "UID of the user that performed the action",
+                :left, :size=>4 do |d|
+                if d["UID"] != "-1"
+                    d["UID"]
+                else
+                    "-"
+                end
+            end
+
+            column :REQ, "Request ID of the action", :left, :size=>5 do |d|
+                if d["REQUEST_ID"] != "-1"
+                    d["REQUEST_ID"]
+                else
+                    "-"
+                end
+            end
+
+            column :HOST, "Host name of the VM container", :left, :size=>12 do |d|
                 d["HOSTNAME"]
             end
 
-            column :"ACTION", "VM state change action", :left, :size=>16 do |d|
+            column :"ACTION", "VM state change action", :left, :size=>10 do |d|
                 VirtualMachine.get_history_action d["ACTION"]
-            end
-
-            column :REASON, "VM state change reason", :left, :size=>4 do |d|
-                VirtualMachine.get_reason d["REASON"]
             end
 
             column :DS, "System Datastore", :size=>4 do |d|
@@ -1053,7 +1081,7 @@ in the frontend machine.
                 OpenNebulaHelper.short_period_to_str(dtime)
             end
 
-            default :SEQ, :HOST, :ACTION, :DS, :START, :TIME, :PROLOG
+            default :SEQ, :UID, :REQ, :HOST, :ACTION, :DS, :START, :TIME, :PROLOG
         end
 
         vm_hash=vm.to_hash

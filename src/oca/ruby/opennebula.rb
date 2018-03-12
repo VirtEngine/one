@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -27,6 +27,7 @@ require 'pp'
 require 'opennebula/xml_utils'
 require 'opennebula/client'
 require 'opennebula/error'
+require 'opennebula/utils'
 require 'opennebula/virtual_machine'
 require 'opennebula/virtual_machine_pool'
 require 'opennebula/virtual_network'
@@ -62,9 +63,11 @@ require 'opennebula/marketplace'
 require 'opennebula/marketplace_pool'
 require 'opennebula/marketplaceapp'
 require 'opennebula/marketplaceapp_pool'
+require 'opennebula/vm_group'
+require 'opennebula/vm_group_pool'
 
 module OpenNebula
 
     # OpenNebula version
-    VERSION = '5.2.0'
+    VERSION = '5.5.80'
 end

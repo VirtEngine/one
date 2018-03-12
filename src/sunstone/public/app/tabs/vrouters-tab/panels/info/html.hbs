@@ -1,5 +1,5 @@
 {{! -------------------------------------------------------------------------- }}
-{{! Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                }}
+{{! Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                }}
 {{!                                                                            }}
 {{! Licensed under the Apache License, Version 2.0 (the "License"); you may    }}
 {{! not use this file except in compliance with the License. You may obtain    }}
@@ -67,7 +67,7 @@
           <td>{{VROUTER_MANAGEMENT}}</td>
           <td>
             {{#isTabActionEnabled "vrouters-tab" "VirtualRouter.detachnic"}}
-            <a href="VirtualRouter.detachnic" class="detachnic" ><i class="fa fa-times"/>
+            <a href="VirtualRouter.detachnic" class="detachnic" ><i class="fas fa-times"/>
               {{tr "Detach"}}
             </a>
             {{/isTabActionEnabled}}
@@ -78,8 +78,10 @@
     </table>
   </div>
 </div>
+{{#isFeatureEnabled "show_attributes_info"}}
 <div class="row">
   <div class="large-9 columns">
     {{{templateTableHTML}}}
   </div>
 </div>
+{{/isFeatureEnabled}}

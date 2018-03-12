@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -43,12 +43,38 @@ class VLANTagDriver < VNMMAD::VLANDriver
     # This function creates and activate a VLAN device
     ############################################################################
     def create_vlan_dev
-        mtu = @nic[:mtu] ? "mtu #{@nic[:mtu]}" : ""
+        mtu = @nic[:mtu] ? "mtu #{@nic[:mtu]}" : "mtu #{CONF[:vlan_mtu]}"
+
+        ip_link_conf = ""
+
+        @nic[:ip_link_conf].each do |option, value|
+            case value
+            when true
+                value = "on"
+            when false
+                value = "off"
+            end
+
+            ip_link_conf << "#{option} #{value} "
+        end
 
         OpenNebula.exec_and_log("#{command(:ip)} link add link"\
             " #{@nic[:phydev]} name #{@nic[:vlan_dev]} #{mtu} type vlan id"\
-            " #{@nic[:vlan_id]}")
+            " #{@nic[:vlan_id]} #{ip_link_conf}")
 
         OpenNebula.exec_and_log("#{command(:ip)} link set #{@nic[:vlan_dev]} up")
+    end
+
+    def get_interface_vlan(name)
+        text = %x(#{command(:ip)} -d link show #{name})
+        return nil if $?.exitstatus != 0
+
+        text.each_line do |line|
+            m = line.match(/vlan protocol 802.1Q id (\d+)/)
+
+            return m[1] if m
+        end
+
+        nil
     end
 end

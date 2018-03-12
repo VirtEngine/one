@@ -1,4 +1,4 @@
-@import "../bower_components/fontawesome/css/font-awesome.min.css";
+@import "../bower_components/fontawesome/web-fonts-with-css/css/fontawesome-all.min.css";
 @import "../bower_components/jgrowl/jquery.jgrowl.min.css";
 @import "../bower_components/datatables/media/css/dataTables.foundation.min.css";
 @import "../bower_components/vis/dist/vis.min.css";
@@ -10,6 +10,7 @@
 
 @include foundation-progress-element;
 @include foundation-meter-element;
+
 
 @mixin thin-font {
   font-weight: 300;
@@ -37,6 +38,8 @@
 @import './tooltips';
 @import './visjs';
 @import './flot';
+
+
 
 //@font-face {
 //  font-family: 'Open Sans';
@@ -136,7 +139,7 @@ h4,
 h5,
 h6 {
   font-weight: bold;
-  color: #555;
+  color: $headers-color;
   padding: 1rem 0;
   /* box-shadow: 0 5px 5px -4px rgba(0,0,0,0.1); */
   /* border-bottom: 1px solid #dfdfdf; */
@@ -197,6 +200,7 @@ textarea {
 
 meter {
   margin-bottom: 0;
+  -webkit-appearance: slider-horizontal;
 }
 
 .disk-resize-icon {
@@ -205,8 +209,8 @@ meter {
 }
 
 .log-tab {
-  background: #6f6f6f;
-  color: #f2f2f2;
+  background: $bg-log-tab;
+  color: $log-tab-color;
   padding: 20px;
 }
 
@@ -229,3 +233,4 @@ meter {
 .mb_input_unit {
   width: 4em;
 }
+

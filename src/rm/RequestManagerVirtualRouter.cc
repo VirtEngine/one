@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -140,7 +140,7 @@ void VirtualRouterInstantiate::request_execute(
 
             for (vmid = vms.begin(); vmid != vms.end(); vmid++)
             {
-                dm->delete_vm(*vmid, att.resp_msg);
+                dm->delete_vm(*vmid, att, att.resp_msg);
             }
 
             return;
@@ -171,7 +171,7 @@ void VirtualRouterInstantiate::request_execute(
     {
         for (vmid = vms.begin(); vmid != vms.end(); vmid++)
         {
-            dm->release(*vmid, att.resp_msg);
+            dm->release(*vmid, att, att.resp_msg);
         }
     }
 
@@ -293,12 +293,9 @@ void VirtualRouterAttachNic::request_execute(
         {
             failure_response(ACTION, att);
 
-            delete nic;
             return;
         }
     }
-
-    delete nic;
 
     success_response(vrid, att);
 }

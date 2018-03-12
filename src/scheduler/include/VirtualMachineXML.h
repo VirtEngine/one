@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -60,7 +60,6 @@ public:
     //--------------------------------------------------------------------------
     // Get Methods for VirtualMachineXML class
     //--------------------------------------------------------------------------
-
     int get_oid() const
     {
         return oid;
@@ -116,9 +115,23 @@ public:
         return ds_requirements;
     }
 
-    void get_requirements (int& cpu, int& memory, long long& disk,
+    /**
+     *  Return VM usage requirments
+     */
+    void get_requirements(int& cpu, int& memory, long long& disk,
         vector<VectorAttribute *> &pci);
 
+    /**
+     *  Return the requirements of this VM (as is) and reset them
+     *    @param cpu in unit
+     *    @param memory in kb
+     *    @param disk in mb (system ds usage)
+     */
+    void reset_requirements(float& cpu, int& memory, long long& disk);
+
+    /**
+     *  @return the usage requirements in image ds.
+     */
     map<int,long long> get_storage_usage();
 
     /**
@@ -130,10 +143,45 @@ public:
         return public_cloud;
     };
 
+    /**
+     *   Adds usage requirements to this VM
+     *     @param cpu in unit form
+     *     @param m memory in kb
+     *     @param d in mb (system ds usage)
+     */
+    void add_requirements(float c, long int m, long long d);
+
+    /**
+     *  Adds (logical AND) new placement requirements to the current ones
+     *    @param reqs additional requirements
+     */
+    void add_requirements(const string& reqs)
+    {
+        if ( reqs.empty() )
+        {
+            return;
+        }
+        else if ( requirements.empty() )
+        {
+            requirements = reqs;
+        }
+        else
+        {
+            requirements += " & (" + reqs + ")";
+        }
+    }
+
+    /**
+     *  Check if the VM is ACTIVE state
+     */
+    bool is_active() const
+    {
+        return state == 3;
+    }
+
     //--------------------------------------------------------------------------
     // Matched Resources Interface
     //--------------------------------------------------------------------------
-
     /**
      *  Adds a matching host if it is not equal to the actual one
      *    @param oid of the host
@@ -213,6 +261,23 @@ public:
      * @return true is the VM can only be deployed in public cloud hosts
      */
     bool is_only_public_cloud() const;
+
+    /**
+     *  Add a VM to the set of affined VMs. This is used for the VM leader
+     *  when scheduling a group.
+     *
+     *  @param vmid of the affined vm
+     *
+     */
+    void add_affined(int vmid)
+    {
+        affined_vms.insert(vmid);
+    }
+
+    const set<int>& get_affined_vms() const
+    {
+        return affined_vms;
+    }
 
     //--------------------------------------------------------------------------
     // Capacity Interface
@@ -313,11 +378,15 @@ protected:
 
     void init_storage_usage();
 
+    /* ------------------- SCHEDULER INFORMATION --------------------------- */
+
     ResourceMatch match_hosts;
 
     ResourceMatch match_datastores;
 
     bool only_public_cloud;
+
+    set<int> affined_vms;
 
     /* ----------------------- VIRTUAL MACHINE ATTRIBUTES ------------------- */
     int   oid;
@@ -331,7 +400,9 @@ protected:
     int   resched;
     bool  resume;
 
-    int         memory;
+    int   state;
+
+    long int         memory;
     float       cpu;
     long long   system_ds_usage;
 
@@ -347,6 +418,7 @@ protected:
 
     VirtualMachineTemplate * vm_template;   /**< The VM template */
     VirtualMachineTemplate * user_template; /**< The VM user template */
+
 };
 
 #endif /* VM_XML_H_ */

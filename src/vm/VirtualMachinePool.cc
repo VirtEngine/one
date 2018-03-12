@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -47,7 +47,7 @@ VirtualMachinePool::VirtualMachinePool(
         float                       default_cpu_cost,
         float                       default_mem_cost,
         float                       default_disk_cost)
-    : PoolSQL(db, VirtualMachine::table, true, false),
+    : PoolSQL(db, VirtualMachine::table),
     _monitor_expiration(expire_time), _submit_on_hold(on_hold),
     _default_cpu_cost(default_cpu_cost), _default_mem_cost(default_mem_cost),
     _default_disk_cost(default_disk_cost)
@@ -207,7 +207,7 @@ VirtualMachinePool::VirtualMachinePool(
     }
 
     // Set restricted attributes
-    VirtualMachineTemplate::set_restricted_attributes(restricted_attrs);
+    VirtualMachineTemplate::parse_restricted(restricted_attrs);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -238,7 +238,7 @@ int VirtualMachinePool::insert_index(const string& deploy_id, int vmid,
 
     db->free_str(deploy_name);
 
-    return db->exec(oss);
+    return db->exec_wr(oss);
 };
 
 /* -------------------------------------------------------------------------- */
@@ -256,7 +256,7 @@ void VirtualMachinePool::drop_index(const string& deploy_id)
     oss << "DELETE FROM " << import_table << " WHERE deploy_id='"
         << deploy_name << "'";
 
-    db->exec(oss);
+    db->exec_wr(oss);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -469,7 +469,7 @@ int VirtualMachinePool::clean_expired_monitoring()
     oss << "DELETE FROM " << VirtualMachine::monit_table
         << " WHERE last_poll < " << max_last_poll;
 
-    rc = db->exec(oss);
+    rc = db->exec_local_wr(oss);
 
     return rc;
 }
@@ -484,7 +484,7 @@ int VirtualMachinePool::clean_all_monitoring()
 
     oss << "DELETE FROM " << VirtualMachine::monit_table;
 
-    rc = db->exec(oss);
+    rc = db->exec_local_wr(oss);
 
     return rc;
 }
@@ -543,7 +543,7 @@ int VirtualMachinePool::get_vmid (const string& deploy_id)
     oss << "SELECT vmid FROM " << import_table
         << " WHERE deploy_id = '" << db->escape_str(deploy_id.c_str()) << "'";
 
-    rc = db->exec(oss, this);
+    rc = db->exec_rd(oss, this);
 
     unset_callback();
 
@@ -696,7 +696,7 @@ int VirtualMachinePool::calculate_showback(
 
         oss << "SELECT MIN(stime) FROM " << History::table;
 
-        rc = db->exec(oss, this);
+        rc = db->exec_rd(oss, this);
 
         unset_callback();
     }
@@ -973,7 +973,7 @@ int VirtualMachinePool::calculate_showback(
             {
                 oss << sql_cmd_end;
 
-                rc = db->exec(oss);
+                rc = db->exec_wr(oss);
 
                 if (rc != 0)
                 {
@@ -1004,7 +1004,7 @@ int VirtualMachinePool::calculate_showback(
     {
         oss << sql_cmd_end;
 
-        rc = db->exec(oss);
+        rc = db->exec_wr(oss);
 
         if (rc != 0)
         {
@@ -1038,8 +1038,6 @@ int VirtualMachinePool::calculate_showback(
 void VirtualMachinePool::delete_attach_disk(int vid)
 {
     VirtualMachine *  vm;
-    VectorAttribute * disk;
-    Snapshots *       snap;
 
     int uid;
     int gid;
@@ -1052,7 +1050,7 @@ void VirtualMachinePool::delete_attach_disk(int vid)
         return;
     }
 
-    disk = vm->delete_attach_disk(&snap);
+    VirtualMachineDisk * disk = vm->delete_attach_disk();
     uid  = vm->get_uid();
     gid  = vm->get_gid();
     oid  = vm->get_oid();
@@ -1069,10 +1067,10 @@ void VirtualMachinePool::delete_attach_disk(int vid)
         Template tmpl;
         int      image_id;
 
-        tmpl.set(disk);
+        tmpl.set(disk->vector_attribute());
         tmpl.add("VMS", 0);
 
-        if (VirtualMachine::is_volatile(disk))
+        if (disk->is_volatile())
         {
             Quotas::quota_del(Quotas::VM, uid, gid, &tmpl);
         }
@@ -1082,20 +1080,21 @@ void VirtualMachinePool::delete_attach_disk(int vid)
 
             Quotas::quota_del(Quotas::IMAGE, uid, gid, &tmpl);
 
-            if (!VirtualMachine::is_persistent(disk))
+            if (!disk->is_persistent())
             {
                 Quotas::quota_del(Quotas::VM, uid, gid, &tmpl);
             }
 
-            if (snap != 0)
+            if ( disk->has_snapshots() )
             {
-                imagem->set_image_snapshots(image_id, *snap);
-                delete snap;
+                imagem->set_image_snapshots(image_id, *disk->get_snapshots());
             }
 
             imagem->release_image(oid, image_id, false);
         }
     }
+
+    delete disk;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1104,7 +1103,7 @@ void VirtualMachinePool::delete_attach_disk(int vid)
 void VirtualMachinePool::delete_hotplug_nic(int vid, bool attach)
 {
     VirtualMachine *  vm;
-    VectorAttribute * nic;
+    VirtualMachineNic * nic;
 
     int uid;
     int gid;
@@ -1123,18 +1122,7 @@ void VirtualMachinePool::delete_hotplug_nic(int vid, bool attach)
 
     vm->get_security_groups(pre);
 
-    if (attach)
-    {
-        nic  = vm->attach_nic_failure();
-    }
-    else
-    {
-        nic = vm->detach_nic_success();
-    }
-
-    uid  = vm->get_uid();
-    gid  = vm->get_gid();
-    oid  = vm->get_oid();
+    nic = vm->delete_attach_nic();
 
     if ( nic == 0 )
     {
@@ -1144,6 +1132,15 @@ void VirtualMachinePool::delete_hotplug_nic(int vid, bool attach)
 
         return;
     }
+
+    if (attach)
+    {
+        vm->clear_nic_context(nic->get_nic_id());
+    }
+
+    uid  = vm->get_uid();
+    gid  = vm->get_gid();
+    oid  = vm->get_oid();
 
     vm->get_security_groups(post);
 
@@ -1159,11 +1156,11 @@ void VirtualMachinePool::delete_hotplug_nic(int vid, bool attach)
 
     vm->unlock();
 
-    tmpl.set(nic);
+    nic->release_network_leases(oid);
+
+    tmpl.set(nic->vector_attribute());
 
     Quotas::quota_del(Quotas::NETWORK, uid, gid, &tmpl);
-
-    VirtualMachine::release_network_leases(nic, oid);
 }
 
 /* -------------------------------------------------------------------------- */

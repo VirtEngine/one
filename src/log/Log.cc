@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -154,12 +154,15 @@ void StdLog::log(
 /* -------------------------------------------------------------------------- */
 
 SysLog::SysLog(const MessageType level,
-               const string&     label):Log(level), resource_label("")
+               const string&     _label):Log(level), resource_label("")
 {
     static bool initialized = false;
+    static string label;
 
     if (!initialized) //Initialize just once for all SysLog instances
     {
+        label = _label;
+
         openlog(label.c_str(), LOG_PID, LOG_DAEMON);
 
         initialized = true;

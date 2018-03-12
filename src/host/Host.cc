@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems              */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems              */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -51,10 +51,7 @@ Host::Host(
     replace_template_attribute("VM_MAD", vmm_mad_name);
 }
 
-Host::~Host()
-{
-    delete obj_template;
-}
+Host::~Host(){};
 
 /* ************************************************************************ */
 /* Host :: Database Access Functions                                        */
@@ -140,7 +137,7 @@ int Host::insert_replace(SqlDB *db, bool replace, string& error_str)
         <<          other_u             << ","
         <<          cluster_id          << ")";
 
-    rc = db->exec(oss);
+    rc = db->exec_wr(oss);
 
     db->free_str(sql_hostname);
     db->free_str(sql_xml);
@@ -234,8 +231,8 @@ int Host::update_info(Template        &tmpl,
                       set<int>        &lost,
                       map<int,string> &found,
                       const set<int>  &non_shared_ds,
-                      long long       reserved_cpu,
-                      long long       reserved_mem)
+                      const string    &reserved_cpu,
+                      const string    &reserved_mem)
 {
     VectorAttribute*             vatt;
     vector<Attribute*>::iterator it;
@@ -246,7 +243,6 @@ int Host::update_info(Template        &tmpl,
 
     int   rc;
     int   vmid;
-    float val;
 
     ostringstream zombie;
     ostringstream wild;
@@ -254,8 +250,8 @@ int Host::update_info(Template        &tmpl,
     set<int>::iterator        set_it;
     map<int,string>::iterator map_it;
 
-    set<int> prev_tmp_lost   = tmp_lost_vms;
-    set<int> prev_tmp_zombie = tmp_zombie_vms;
+    set<int> prev_tmp_lost   = *tmp_lost_vms;
+    set<int> prev_tmp_zombie = *tmp_zombie_vms;
 
     int num_zombies = 0;
     int num_wilds   = 0;
@@ -289,28 +285,7 @@ int Host::update_info(Template        &tmpl,
 
     touch(true);
 
-    get_reserved_capacity(reserved_cpu, reserved_mem);
-
-    erase_template_attribute("TOTALCPU", val);
-    host_share.max_cpu = val - reserved_cpu;
-    erase_template_attribute("TOTALMEMORY", val);
-    host_share.max_mem = val - reserved_mem;
-    erase_template_attribute("DS_LOCATION_TOTAL_MB", val);
-    host_share.max_disk = val;
-
-    erase_template_attribute("FREECPU", val);
-    host_share.free_cpu = val;
-    erase_template_attribute("FREEMEMORY", val);
-    host_share.free_mem = val;
-    erase_template_attribute("DS_LOCATION_FREE_MB", val);
-    host_share.free_disk = val;
-
-    erase_template_attribute("USEDCPU", val);
-    host_share.used_cpu = val;
-    erase_template_attribute("USEDMEMORY", val);
-    host_share.used_mem = val;
-    erase_template_attribute("DS_LOCATION_USED_MB", val);
-    host_share.used_disk = val;
+    host_share.set_capacity(this, reserved_cpu, reserved_mem);
 
     // -------------------------------------------------------------------------
     // Correlate VM information with the list of running VMs
@@ -320,9 +295,9 @@ int Host::update_info(Template        &tmpl,
 
     obj_template->remove("VM", vm_att);
 
-    tmp_lost_vms = vm_collection.clone();
+    *tmp_lost_vms = vm_collection.clone();
 
-    tmp_zombie_vms.clear();
+    tmp_zombie_vms->clear();
 
     for (it = vm_att.begin(); it != vm_att.end(); it++)
     {
@@ -350,7 +325,7 @@ int Host::update_info(Template        &tmpl,
 
             it_vm = found.find(vmid);
 
-            if ( tmp_lost_vms.erase(vmid) == 1 ) //Good, known
+            if ( tmp_lost_vms->erase(vmid) == 1 ) //Good, known
             {
                 found.insert(make_pair(vmid, vatt->vector_value("POLL")));
             }
@@ -360,26 +335,26 @@ int Host::update_info(Template        &tmpl,
             }
             else //Bad, known but should not be here
             {
-                tmp_zombie_vms.insert(vmid);
+                tmp_zombie_vms->insert(vmid);
 
                 // Reported as zombie at least 2 times?
                 if (prev_tmp_zombie.count(vmid) == 1)
                 {
-                    string zname;
-
-                    if (num_zombies++ > 0)
-                    {
-                        zombie << ", ";
-                    }
-
-                    zname = vatt->vector_value("VM_NAME");
+                    string zname = vatt->vector_value("VM_NAME");
 
                     if (zname.empty())
                     {
                         zname = vatt->vector_value("DEPLOY_ID");
                     }
 
-                    zombie << zname;
+                    if (!zname.empty())
+                    {
+                        if (num_zombies++ > 0)
+                        {
+                            zombie << ", ";
+                        }
+                        zombie << zname;
+                    }
                 }
             }
 
@@ -411,7 +386,7 @@ int Host::update_info(Template        &tmpl,
     {
         if ( one_util::regex_match("STATE=. ",map_it->second.c_str()) != 0 )
         {
-            tmp_lost_vms.insert(map_it->first);
+            tmp_lost_vms->insert(map_it->first);
             found.erase(map_it++);
         }
         else
@@ -420,7 +395,7 @@ int Host::update_info(Template        &tmpl,
         }
     }
 
-    for(set_it = tmp_lost_vms.begin(); set_it != tmp_lost_vms.end(); set_it++)
+    for(set_it = tmp_lost_vms->begin(); set_it != tmp_lost_vms->end(); set_it++)
     {
         // Reported as lost at least 2 times?
         if (prev_tmp_lost.count(*set_it) == 1)
@@ -513,14 +488,7 @@ void Host::offline()
 
     state = OFFLINE;
 
-    host_share.max_cpu = 0;
-    host_share.max_mem = 0;
-
-    host_share.free_cpu = 0;
-    host_share.free_mem = 0;
-
-    host_share.used_cpu = 0;
-    host_share.used_mem = 0;
+    host_share.reset_capacity();
 
     remove_template_attribute("TOTALCPU");
     remove_template_attribute("TOTALMEMORY");
@@ -582,7 +550,7 @@ int Host::update_monitoring(SqlDB * db)
 
     db->free_str(sql_xml);
 
-    rc = db->exec(oss);
+    rc = db->exec_local_wr(oss);
 
     return rc;
 
@@ -722,36 +690,61 @@ int Host::from_xml(const string& xml)
     return 0;
 }
 
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+static void nebula_crypt(const std::string in, std::string& out)
+{
+    Nebula& nd = Nebula::instance();
+    string  one_key;
+    string  * encrypted;
+
+    nd.get_configuration_attribute("ONE_KEY", one_key);
+
+    if (!one_key.empty())
+    {
+        encrypted = one_util::aes256cbc_encrypt(in, one_key);
+
+        out = *encrypted;
+
+        delete encrypted;
+    }
+    else
+    {
+        out = in;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+
+static const map<std::string, unsigned int> MAX_HOST_VAR_SIZES = {
+    {"EC2_ACCESS", 21},
+    {"EC2_SECRET", 41},
+    {"AZ_ID", 41},
+    {"AZ_CERT", 3130},
+    {"VCENTER_PASSWORD", 22},
+    {"ONE_PASSWORD", 22}
+};
 
 int Host::post_update_template(string& error)
 {
-    string vcenter_password;
     string new_im_mad;
     string new_vm_mad;
 
-    get_template_attribute("VCENTER_PASSWORD", vcenter_password);
+    map<std::string, unsigned int>::const_iterator it;
 
-    if (!vcenter_password.empty() && vcenter_password.size() <= 22)
+    for (it = MAX_HOST_VAR_SIZES.begin(); it != MAX_HOST_VAR_SIZES.end() ; ++it)
     {
-        erase_template_attribute("VCENTER_PASSWORD", vcenter_password);
+        string att;
+        string crypted;
 
-        Nebula& nd = Nebula::instance();
-        string  one_key;
-        string  * encrypted;
+        get_template_attribute(it->first.c_str(), att);
 
-        nd.get_configuration_attribute("ONE_KEY", one_key);
-
-        if (!one_key.empty())
+        if (!att.empty() && att.size() <= it->second)
         {
-            encrypted = one_util::aes256cbc_encrypt(vcenter_password, one_key);
+            nebula_crypt(att, crypted);
 
-            add_template_attribute("VCENTER_PASSWORD", *encrypted);
-
-            delete encrypted;
-        }
-        else
-        {
-            add_template_attribute("VCENTER_PASSWORD", vcenter_password);
+            replace_template_attribute(it->first, crypted);
         }
     }
 
@@ -768,6 +761,8 @@ int Host::post_update_template(string& error)
 
     replace_template_attribute("IM_MAD", im_mad_name);
     replace_template_attribute("VM_MAD", vmm_mad_name);
+
+    host_share.update_capacity(this);
 
     return 0;
 };

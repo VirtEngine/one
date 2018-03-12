@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -46,6 +46,14 @@ class OneVNetHelper < OpenNebulaHelper::OneHelper
         :large => "--ip ip",
         :format => String,
         :description => "First IP address in . notation"
+    }
+
+    IP6 = {
+        :name => "ip6",
+        :short => "-6 ip6",
+        :large => "--ip6 ip6",
+        :format => String,
+        :description => "First IPv6 address, in CIDR notation e.g. 2001::1/48"
     }
 
     SIZE = {
@@ -117,7 +125,8 @@ class OneVNetHelper < OpenNebulaHelper::OneHelper
     ]
 
     ADDAR_OPTIONS = [
-        SIZE, MAC, IP, IP6_GLOBAL, IP6_ULA, GATEWAY, NETMASK, VN_MAD, VLAN_ID ]
+        SIZE, MAC, IP, IP6, IP6_GLOBAL, IP6_ULA, GATEWAY, NETMASK, VN_MAD,
+        VLAN_ID ]
 
     def self.rname
         "VNET"
@@ -205,17 +214,21 @@ class OneVNetHelper < OpenNebulaHelper::OneHelper
         CLIHelper.print_header(str_h1 %
             ["VIRTUAL NETWORK #{vn.id.to_s} INFORMATION"])
 
-        str="%-15s: %-20s"
+        str="%-25s: %-20s"
         puts str % ["ID", vn.id.to_s]
         puts str % ["NAME", vn['NAME']]
         puts str % ["USER", vn['UNAME']]
         puts str % ["GROUP", vn['GNAME']]
+        puts str % ["LOCK", OpenNebulaHelper.level_lock_to_str(vn['LOCK/LOCKED'])]
         puts str % ["CLUSTERS",
             OpenNebulaHelper.clusters_str(vn.retrieve_elements("CLUSTERS/ID"))]
         puts str % ["BRIDGE", vn["BRIDGE"]]
         puts str % ["VN_MAD", vn['VN_MAD']] if !vn['VN_MAD'].empty?
         puts str % ["PHYSICAL DEVICE", vn["PHYDEV"]] if !vn["PHYDEV"].empty?
         puts str % ["VLAN ID", vn["VLAN_ID"]] if !vn["VLAN_ID"].empty?
+        puts str % ["AUTOMATIC VLAN ID", vn["VLAN_ID_AUTOMATIC"]=="1" ? "YES" : "NO"]
+        puts str % ["OUTER VLAN ID", vn["OUTER_VLAN_ID"]] if !vn["OUTER_VLAN_ID"].empty?
+        puts str % ["AUTOMATIC OUTER VLAN ID", vn["OUTER_VLAN_ID_AUTOMATIC"]=="1" ? "YES" : "NO"]
         puts str % ["USED LEASES", vn['USED_LEASES']]
         puts
 
@@ -274,6 +287,10 @@ class OneVNetHelper < OpenNebulaHelper::OneHelper
                 puts format % ["IP6_ULA", ar["IP6_ULA"], ar["IP6_ULA_END"]]
             end
 
+            if !ar["IP6"].nil?
+                puts format % ["IP6", ar["IP6"], ar["IP6_END"]]
+            end
+
             puts
         end
 
@@ -325,8 +342,8 @@ class OneVNetHelper < OpenNebulaHelper::OneHelper
                     d["IP"]||"-"
             end
 
-            column :IP6_GLOBAL, "", :donottruncate, :size=>26 do |d|
-                    d["IP6_GLOBAL"]||"-"
+            column :IP6, "", :donottruncate, :size=>26 do |d|
+                    d["IP6"]||d["IP6_GLOBAL"]||"-"
             end
         end.show(leases, {})
 

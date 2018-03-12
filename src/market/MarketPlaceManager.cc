@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -19,7 +19,6 @@
 #include "MarketPlaceAppPool.h"
 #include "MarketPlaceManagerDriver.h"
 
-#include "NebulaLog.h"
 #include "Nebula.h"
 
 const char * MarketPlaceManager::market_driver_name = "market_exe";
@@ -40,7 +39,7 @@ extern "C" void * marketplace_action_loop(void *arg)
 
     mpm = static_cast<MarketPlaceManager *>(arg);
 
-    mpm->am.loop(mpm->timer_period, 0);
+    mpm->am.loop(mpm->timer_period);
 
     NebulaLog::log("MKP", Log::INFO, "Marketplace Manager stopped.");
 
@@ -56,7 +55,8 @@ MarketPlaceManager::MarketPlaceManager(
         MadManager(_mads),
         timer_period(_timer_period),
         monitor_period(_monitor_period),
-        imagem(0)
+        imagem(0),
+        raftm(0)
 {
     Nebula& nd = Nebula::instance();
 
@@ -121,6 +121,7 @@ void MarketPlaceManager::init_managers()
     Nebula& nd = Nebula::instance();
 
     imagem = nd.get_imagem();
+    raftm  = nd.get_raftm();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -152,29 +153,6 @@ int MarketPlaceManager::start()
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void MarketPlaceManager::do_action(const string &action, void * arg)
-{
-    if (action == ACTION_TIMER)
-    {
-        timer_action();
-    }
-    else if (action == ACTION_FINALIZE)
-    {
-        NebulaLog::log("MKP", Log::INFO, "Stopping Marketplace Manager...");
-        MadManager::stop();
-    }
-    else
-    {
-        std::ostringstream oss;
-        oss << "Unknown action name: " << action;
-
-        NebulaLog::log("MKP", Log::ERROR, oss);
-    }
-}
-
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-
 string * MarketPlaceManager::format_message(
     const string& app_data,
     const string& market_data,
@@ -194,10 +172,10 @@ string * MarketPlaceManager::format_message(
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void MarketPlaceManager::timer_action()
+void MarketPlaceManager::timer_action(const ActionRequest& ar)
 {
     static int mark = 0;
-    static int tics = monitor_period;
+    static int tics = monitor_period - 5; //first monitor in 5 secs
 
     mark += timer_period;
     tics += timer_period;
@@ -214,6 +192,11 @@ void MarketPlaceManager::timer_action()
     }
 
     tics = 0;
+
+    if (raftm == 0 || (!raftm->is_leader() && !raftm->is_solo()))
+    {
+        return;
+    }
 
     int rc;
 

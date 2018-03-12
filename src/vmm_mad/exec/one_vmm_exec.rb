@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -126,7 +126,7 @@ class VmmAction
         end
 
         if DriverExecHelper.failed?(result)
-            info << @data[:failed_info]
+            info << ( @data[:failed_info] || "-" )
         elsif !@data["#{@main_action.to_s}_info".to_sym].nil?
             info << @data["#{@main_action.to_s}_info".to_sym]
         end
@@ -139,7 +139,7 @@ class VmmAction
     # List of xpaths required by the VNM driver actions. TEMPLATE/NIC is
     # also required but added separately to the driver xml
     XPATH_LIST = %w(
-        ID DEPLOY_ID
+        ID DEPLOY_ID TEMPLATE/CONTEXT USER_TEMPLATE
         TEMPLATE/SECURITY_GROUP_RULE
         HISTORY_RECORDS/HISTORY/HOSTNAME
         HISTORY_RECORDS/HISTORY/VM_MAD
@@ -739,7 +739,8 @@ class ExecDriver < VirtualMachineDriver
                     id,
                     host,
                     ACTION[:snapshot_create],
-                    :script_name => "snapshot_create")
+                    :script_name => "snapshot_create",
+                    :stdin => xml_data)
     end
 
     #
@@ -780,6 +781,46 @@ class ExecDriver < VirtualMachineDriver
                     :script_name => "snapshot_delete")
     end
 
+    #
+    # RESIZEDISK action, resizes a disk on a running VM
+    #
+    def resize_disk(id, drv_message)
+        action   = ACTION[:resize_disk]
+        xml_data = decode(drv_message)
+
+        tm_command = ensure_xpath(xml_data, id, action, 'TM_COMMAND') || return
+
+        size_xpath = "VM/TEMPLATE/DISK[RESIZE='YES']/SIZE"
+        size       = ensure_xpath(xml_data, id, action, size_xpath) || return
+
+        disk_id_xpath = "VM/TEMPLATE/DISK[RESIZE='YES']/DISK_ID"
+        disk_id       = ensure_xpath(xml_data, id, action, disk_id_xpath) || return
+
+        action = VmmAction.new(self, id, :resize_disk, drv_message)
+
+        steps = [
+            # Perform the resize command
+            {
+                :driver     => :tm,
+                :action     => :tm_resize,
+                :parameters => tm_command.split
+            },
+            # Run the attach vmm script
+            {
+                :driver       => :vmm,
+                :action       => :resize_disk,
+                :parameters   => [
+                        :deploy_id,
+                        disk_id,
+                        size,
+                        drv_message,
+                        :host
+                ]
+            }
+        ]
+
+        action.run(steps)
+    end
     #
     # CLEANUP action, frees resources allocated in a host: VM and disk images
     #

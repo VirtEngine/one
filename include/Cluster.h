@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems              */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems              */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -164,10 +164,10 @@ public:
     /**
      *  Get the default reserved capacity for hosts in the cluster. It can be
      *  overridden if defined in the host template.
-     *    @param cpu reserved cpu (in percentage)
+     *    @param cpu reserved cpu (percentage, or absolute)
      *    @param mem reserved mem (in KB)
      */
-    void get_reserved_capacity(long long &cpu, long long& mem)
+    void get_reserved_capacity(string& cpu, string& mem)
     {
         get_template_attribute("RESERVED_CPU", cpu);
 
@@ -283,13 +283,13 @@ private:
         ostringstream oss;
 
         oss.str(Cluster::db_bootstrap);
-        rc = db->exec(oss);
+        rc = db->exec_local_wr(oss);
 
         oss.str(Cluster::datastore_db_bootstrap);
-        rc += db->exec(oss);
+        rc += db->exec_local_wr(oss);
 
         oss.str(Cluster::network_db_bootstrap);
-        rc += db->exec(oss);
+        rc += db->exec_local_wr(oss);
 
         return rc;
     };

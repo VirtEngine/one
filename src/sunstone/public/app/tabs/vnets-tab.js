@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -50,11 +50,12 @@ define(function(require) {
   var VNetsTab = {
     tabId: TAB_ID,
     title: Locale.tr("Virtual Networks"),
-    icon: 'fa-code-fork',
+    icon: 'fa-code-branch',
     tabClass: "subTab",
     parentTab: "network-top-tab",
     listHeader: Locale.tr("Virtual Networks"),
     infoHeader: Locale.tr("Virtual Network"),
+    lockable: true,
     subheader: '<span class="total_vnets"/> <small>'+Locale.tr("TOTAL")+'</small>&emsp;\
         <span class="addresses_vnets"/> <small>'+Locale.tr("USED IPs")+'</small>',
     resource: 'Network',

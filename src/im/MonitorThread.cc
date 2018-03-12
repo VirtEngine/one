@@ -1,6 +1,6 @@
 
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -106,7 +106,7 @@ void MonitorThread::do_message()
 
         for (set<int>::iterator it = vm_ids.begin(); it != vm_ids.end(); it++)
         {
-            lcm->trigger(LifeCycleManager::MONITOR_DONE, *it);
+            lcm->trigger(LCMAction::MONITOR_DONE, *it);
         }
 
         delete hinfo;
@@ -133,9 +133,9 @@ void MonitorThread::do_message()
 
     int cid = host->get_cluster_id();
 
-    long long reserved_cpu = 0;
+    string reserved_cpu = "";
 
-    long long reserved_mem = 0;
+    string reserved_mem = "";
 
     delete hinfo;
 
@@ -245,7 +245,7 @@ void MonitorThread::do_message()
                    vm->get_lcm_state() == VirtualMachine::SHUTDOWN_POWEROFF ||
                    vm->get_lcm_state() == VirtualMachine::SHUTDOWN_UNDEPLOY))
             {
-                lcm->trigger(LifeCycleManager::MONITOR_POWEROFF, *its);
+                lcm->trigger(LCMAction::MONITOR_POWEROFF, *its);
             }
             // If the guest is shut down before the poll reports it at least
             // once, the VM gets stuck in running. An individual poll action
@@ -255,7 +255,7 @@ void MonitorThread::do_message()
                     vm->get_lcm_state() == VirtualMachine::RUNNING &&
                     (time(0) - vm->get_running_stime() > 300))
             {
-                vmm->trigger(VirtualMachineManager::POLL,vm->get_oid());
+                vmm->trigger(VMMAction::POLL,vm->get_oid());
             }
 
             vm->unlock();
@@ -282,7 +282,7 @@ void MonitorThread::do_message()
                 continue;
             }
 
-            VirtualMachineManagerDriver::process_poll(vm, itm->second, true);
+            VirtualMachineManagerDriver::process_poll(vm, itm->second);
 
             vm->unlock();
         }

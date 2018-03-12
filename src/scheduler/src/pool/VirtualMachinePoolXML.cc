@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -26,13 +26,23 @@ int VirtualMachinePoolXML::set_up()
 
     if ( rc == 0 )
     {
+        map<int, ObjectXML*>::iterator it;
+
         if (objects.empty())
         {
             return -2;
         }
 
+        vm_resources.clear();
+
+        for ( it = objects.begin(); it != objects.end(); ++it )
+        {
+            vm_resources.add_resource(it->first);
+        } 
+
         if (NebulaLog::log_level() >= Log::DDDEBUG)
         {
+
             oss << "Pending/rescheduling VM and capacity requirements:" << endl;
 
             oss << right << setw(8)  << "ACTION"    << " "
@@ -44,7 +54,7 @@ int VirtualMachinePoolXML::set_up()
                 << " Image DS" << endl
                 << setw(60) << setfill('-') << "-" << setfill(' ') << endl;
 
-            for (map<int,ObjectXML*>::iterator it=objects.begin();it!=objects.end();it++)
+            for (it = objects.begin() ; it != objects.end() ; ++it)
             {
                 int cpu, mem;
                 long long disk;
@@ -52,7 +62,9 @@ int VirtualMachinePoolXML::set_up()
 
                 string action = "DEPLOY";
 
-                VirtualMachineXML * vm = static_cast<VirtualMachineXML *>(it->second);
+                VirtualMachineXML * vm;
+
+                vm = static_cast<VirtualMachineXML *>(it->second);
 
                 vm->get_requirements(cpu, mem, disk, pci);
 
@@ -73,11 +85,11 @@ int VirtualMachinePoolXML::set_up()
                     << right << setw(11) << disk        << " ";
 
                 map<int,long long> ds_usage = vm->get_storage_usage();
+                map<int,long long>::const_iterator ds_it;
 
-                for (map<int,long long>::const_iterator ds_it = ds_usage.begin();
-                        ds_it != ds_usage.end(); ds_it++)
+                for ( ds_it = ds_usage.begin(); ds_it != ds_usage.end(); ds_it++)
                 {
-                    oss << " DS " << ds_it->first << ": " << ds_it->second << " ";
+                    oss << " DS " << ds_it->first << ": " << ds_it->second <<" ";
                 }
 
                 oss << endl;
@@ -231,6 +243,7 @@ int VirtualMachinePoolXML::update(int vid, const string &st) const
 
     return 0;
 }
+
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
@@ -263,6 +276,7 @@ int VirtualMachineActionsPoolXML::set_up()
 
     return rc;
 }
+
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
@@ -304,3 +318,30 @@ int VirtualMachineActionsPoolXML::action(
 
     return 0;
 }
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int VirtualMachineRolePoolXML::set_up()
+{
+    int rc = PoolXML::set_up();
+
+    if ( rc == 0 )
+    {
+        ostringstream oss;
+
+        oss << "VMs in VMGroups:" << endl;
+
+        map<int,ObjectXML*>::iterator it;
+
+        for (it=objects.begin();it!=objects.end();it++)
+        {
+            oss << " " << it->first;
+        }
+
+        NebulaLog::log("VM", Log::DEBUG, oss);
+    }
+
+    return rc;
+}
+

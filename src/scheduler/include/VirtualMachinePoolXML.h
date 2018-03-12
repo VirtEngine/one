@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -84,6 +84,22 @@ public:
         return update(vm->get_oid(), vm->get_template(xml));
     };
 
+    /**
+     *  Returns a vector of matched hosts
+     */
+    const vector<Resource *> get_vm_resources()
+    {
+        return vm_resources.get_resources();
+    }
+
+    /**
+     *  Sort the VMs in the pool
+     */
+    void sort_vm_resources()
+    {
+        vm_resources.sort_resources();
+    }
+
 protected:
 
     int get_suitable_nodes(vector<xmlNodePtr>& content)
@@ -101,6 +117,12 @@ protected:
      * Do live migrations to resched VMs
      */
     bool live_resched;
+
+private:
+    /**
+     *  Stores the list of vms, and it associated user prioty vm_resources.
+     */
+    VirtualMachineResourceMatch vm_resources;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -149,4 +171,36 @@ protected:
     }
 };
 
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+class VirtualMachineRolePoolXML : public VirtualMachinePoolXML
+{
+public:
+
+    VirtualMachineRolePoolXML(Client * client, unsigned int machines_limit):
+        VirtualMachinePoolXML(client, machines_limit, false){};
+
+    virtual ~VirtualMachineRolePoolXML(){};
+
+    /**
+     * Retrieves the VMs part of a role
+     *
+     * @return   0 on success
+     *          -1 on error
+     *          -2 if no VMs in a role
+     */
+    int set_up();
+
+protected:
+
+    int get_suitable_nodes(vector<xmlNodePtr>& content)
+    {
+        ostringstream oss;
+
+        oss << "/VM_POOL/VM[TEMPLATE/VMGROUP/ROLE]";
+
+        return get_nodes(oss.str().c_str(), content);
+    }
+};
 #endif /* VM_POOL_XML_H_ */

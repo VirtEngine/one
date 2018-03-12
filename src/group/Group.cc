@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems              */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems              */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -161,7 +161,7 @@ int Group::insert_replace(SqlDB *db, bool replace, string& error_str)
         <<          other_u             << ")";
 
 
-    rc = db->exec(oss);
+    rc = db->exec_wr(oss);
 
     db->free_str(sql_name);
     db->free_str(sql_xml);
@@ -353,7 +353,7 @@ void Group::add_admin_rules(int user_id)
         NebulaLog::log("GROUP",Log::ERROR,error_msg);
     }
 
-    // #<uid> VM+NET+IMAGE+TEMPLATE+DOCUMENT+SECGROUP+VROUTER/@<gid> USE+MANAGE *
+    // #<uid> VM+NET+IMAGE+TEMPLATE+DOCUMENT+SECGROUP+VROUTER+VMGROUP/@<gid> USE+MANAGE *
     if ( aclm->add_rule(
             AclRule::INDIVIDUAL_ID |
             user_id,
@@ -365,6 +365,7 @@ void Group::add_admin_rules(int user_id)
             PoolObjectSQL::DOCUMENT |
             PoolObjectSQL::SECGROUP |
             PoolObjectSQL::VROUTER |
+            PoolObjectSQL::VMGROUP |
             AclRule::GROUP_ID |
             oid,
 
@@ -387,6 +388,24 @@ void Group::add_admin_rules(int user_id)
             PoolObjectSQL::VROUTER,
 
             AuthRequest::CREATE,
+
+            AclRule::ALL_ID,
+
+            error_msg) < 0 )
+    {
+        NebulaLog::log("GROUP",Log::ERROR,error_msg);
+    }
+
+    // #<uid> GROUP/<gid> MANAGE *
+    if ( aclm->add_rule(
+            AclRule::INDIVIDUAL_ID |
+            user_id,
+
+            PoolObjectSQL::GROUP |
+            AclRule::INDIVIDUAL_ID |
+            oid,
+
+            AuthRequest::MANAGE,
 
             AclRule::ALL_ID,
 
@@ -449,7 +468,7 @@ void Group::del_admin_rules(int user_id)
         NebulaLog::log("GROUP",Log::ERROR,error_msg);
     }
 
-    // #<uid> VM+NET+IMAGE+TEMPLATE+DOCUMENT+SECGROUP+VROUTER/@<gid> USE+MANAGE *
+    // #<uid> VM+NET+IMAGE+TEMPLATE+DOCUMENT+SECGROUP+VROUTER+VMGROUP/@<gid> USE+MANAGE *
     if ( aclm->del_rule(
             AclRule::INDIVIDUAL_ID |
             user_id,
@@ -461,6 +480,7 @@ void Group::del_admin_rules(int user_id)
             PoolObjectSQL::DOCUMENT |
             PoolObjectSQL::SECGROUP |
             PoolObjectSQL::VROUTER |
+            PoolObjectSQL::VMGROUP |
             AclRule::GROUP_ID |
             oid,
 
@@ -483,6 +503,24 @@ void Group::del_admin_rules(int user_id)
             PoolObjectSQL::VROUTER,
 
             AuthRequest::CREATE,
+
+            AclRule::ALL_ID,
+
+            error_msg) < 0 )
+    {
+        NebulaLog::log("GROUP",Log::ERROR,error_msg);
+    }
+
+    // #<uid> GROUP/<gid> MANAGE *
+    if ( aclm->del_rule(
+            AclRule::INDIVIDUAL_ID |
+            user_id,
+
+            PoolObjectSQL::GROUP |
+            AclRule::INDIVIDUAL_ID |
+            oid,
+
+            AuthRequest::MANAGE,
 
             AclRule::ALL_ID,
 

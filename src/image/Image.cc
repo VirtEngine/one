@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems              */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems              */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -60,25 +60,22 @@ Image::Image(int             _uid,
         vm_collection("VMS"),
         img_clone_collection("CLONES"),
         app_clone_collection("APP_CLONES"),
-        snapshots(-1),
+        snapshots(-1, false),
         target_snapshot(-1)
-{
-    if (_image_template != 0)
     {
-        obj_template = _image_template;
-    }
-    else
-    {
-        obj_template = new ImageTemplate;
+        if (_image_template != 0)
+        {
+            obj_template = _image_template;
+        }
+        else
+        {
+            obj_template = new ImageTemplate;
+        }
+
+        set_umask(_umask);
     }
 
-    set_umask(_umask);
-}
-
-Image::~Image()
-{
-    delete obj_template;
-}
+Image::~Image(){};
 
 /* ************************************************************************ */
 /* Image :: Database Access Functions                                       */
@@ -204,6 +201,7 @@ int Image::insert(SqlDB *db, string& error_str)
     }
 
     state = LOCKED; //LOCKED till the ImageManager copies it to the Repository
+    lock_db(-1,-1, PoolObjectSQL::LockStates::ST_USE);
 
     //--------------------------------------------------------------------------
     // Insert the Image
@@ -291,7 +289,7 @@ int Image::insert_replace(SqlDB *db, bool replace, string& error_str)
         <<          group_u         << ","
         <<          other_u         << ")";
 
-    rc = db->exec(oss);
+    rc = db->exec_wr(oss);
 
     db->free_str(sql_name);
     db->free_str(sql_xml);
@@ -332,6 +330,7 @@ string& Image::to_xml(string& xml) const
     string        clone_collection_xml;
     string        app_clone_collection_xml;
     string        snapshots_xml;
+    string        lock_str;
 
     oss <<
         "<IMAGE>" <<
@@ -341,6 +340,7 @@ string& Image::to_xml(string& xml) const
             "<UNAME>"          << uname           << "</UNAME>"       <<
             "<GNAME>"          << gname           << "</GNAME>"       <<
             "<NAME>"           << name            << "</NAME>"        <<
+            lock_db_to_xml(lock_str)                                  <<
             perms_to_xml(perms_xml)                                   <<
             "<TYPE>"           << type            << "</TYPE>"        <<
             "<DISK_TYPE>"      << disk_type       << "</DISK_TYPE>"   <<
@@ -412,6 +412,7 @@ int Image::from_xml(const string& xml)
     rc += xpath(ds_id,          "/IMAGE/DATASTORE_ID",  -1);
     rc += xpath(ds_name,        "/IMAGE/DATASTORE",     "not_found");
 
+    rc += lock_db_from_xml();
     // Permissions
     rc += perms_from_xml();
 
@@ -462,10 +463,10 @@ int Image::from_xml(const string& xml)
 /* ------------------------------------------------------------------------ */
 /* ------------------------------------------------------------------------ */
 
-void Image::disk_attribute( VectorAttribute *       disk,
-                            ImageType&              img_type,
-                            string&                 dev_prefix,
-                            const vector<string>&   inherit_attrs)
+void Image::disk_attribute(VirtualMachineDisk *    disk,
+                           ImageType&              img_type,
+                           string&                 dev_prefix,
+                           const vector<string>&   inherit_attrs)
 {
     string target;
     string driver;
@@ -481,7 +482,6 @@ void Image::disk_attribute( VectorAttribute *       disk,
     driver     = disk->vector_value("DRIVER");
     dev_prefix = disk->vector_value("DEV_PREFIX");
 
-    long long size = -1;
     long long snap_size;
 
     string template_target;
@@ -520,15 +520,12 @@ void Image::disk_attribute( VectorAttribute *       disk,
     //--------------------------------------------------------------------------
     //                       BASE DISK ATTRIBUTES
     //--------------------------------------------------------------------------
-    disk->replace("IMAGE",    name);
+    disk->replace("IMAGE", name);
     disk->replace("IMAGE_ID", oid);
-    disk->replace("SOURCE",   source);
+    disk->replace("SOURCE", source);
+    disk->replace("ORIGINAL_SIZE", size_mb);
 
-    if ( disk->vector_value("SIZE", size) == 0 && size != size_mb)
-    {
-        disk->replace("ORIGINAL_SIZE", size_mb);
-    }
-    else
+    if ( disk->vector_value("SIZE").empty() )
     {
         disk->replace("SIZE", size_mb);
     }
@@ -809,8 +806,15 @@ void Image::set_state(ImageState _state)
 
         for(set<int>::iterator i = vms.begin(); i != vms.end(); i++)
         {
-            lcm->trigger(LifeCycleManager::DISK_LOCK_FAILURE, *i);
+            lcm->trigger(LCMAction::DISK_LOCK_FAILURE, *i);
         }
+    } else if( _state == LOCKED)
+    {
+        lock_db(-1,-1, PoolObjectSQL::LockStates::ST_USE);
+    }
+    if (_state != LOCKED )
+    {
+        unlock_db(-1,-1);
     }
 
     state = _state;
@@ -827,6 +831,7 @@ void Image::set_state_unlock()
 
     switch (state) {
         case LOCKED:
+            unlock_db(-1,-1);
             set_state(READY);
             break;
 
@@ -870,7 +875,50 @@ void Image::set_state_unlock()
 
         for(set<int>::iterator i = vms.begin(); i != vms.end(); i++)
         {
-            lcm->trigger(LifeCycleManager::DISK_LOCK_SUCCESS, *i);
+            lcm->trigger(LCMAction::DISK_LOCK_SUCCESS, *i);
         }
     }
 }
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+bool Image::test_set_persistent(Template * image_template, int uid, int gid,
+        bool is_allocate)
+{
+    Nebula&  nd = Nebula::instance();
+
+    string per_oned;
+    string conf_name;
+
+    bool persistent;
+
+    if ( is_allocate )
+    {
+        conf_name = "DEFAULT_IMAGE_PERSISTENT_NEW";
+    }
+    else
+    {
+        conf_name = "DEFAULT_IMAGE_PERSISTENT";
+    }
+
+    int rc = nd.get_configuration_attribute(uid, gid, conf_name, per_oned);
+
+    if ( rc != 0 || per_oned.empty() ) //No DEFAULT_* defined or empty value
+    {
+        image_template->get("PERSISTENT", persistent);
+    }
+    else if ( rc == 0 && one_util::toupper(per_oned) == "YES" )
+    {
+        persistent = true;
+    }
+    else
+    {
+        persistent = false;
+    }
+
+    image_template->replace("PERSISTENT", persistent);
+
+    return persistent;
+}
+

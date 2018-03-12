@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -38,7 +38,8 @@ define(function(require) {
     require('tabs/settings-tab/panels/quotas'),
     require('tabs/settings-tab/panels/group-quotas'),
     require('tabs/settings-tab/panels/accounting'),
-    require('tabs/settings-tab/panels/showback')
+    require('tabs/settings-tab/panels/showback'),
+    require('tabs/settings-tab/panels/auth')
   ];
 
   var _formPanels = [
@@ -52,7 +53,7 @@ define(function(require) {
     resource: 'Settings',
     actions: _actions,
     content: '<span class="fa-stack fa-2x" style="color: #dfdfdf">' +
-      '<i class="fa fa-cloud fa-stack-2x"></i>' +
+      '<i class="fas fa-cloud fa-stack-2x"></i>' +
       '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>' +
     '</span>',
     dialogs: _dialogs,

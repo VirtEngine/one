@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems              */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems              */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -22,6 +22,8 @@
 #include "DatastoreTemplate.h"
 #include "Clusterable.h"
 #include "Image.h"
+
+class VirtualMachineDisk;
 
 /**
  *  The Datastore class.
@@ -191,7 +193,7 @@ public:
      *   into the disk
      */
     void disk_attribute(
-            VectorAttribute *       disk,
+            VirtualMachineDisk *    disk,
             const vector<string>&   inherit_attrs);
 
     /**
@@ -362,7 +364,7 @@ private:
     {
         ostringstream oss(Datastore::db_bootstrap);
 
-        return db->exec(oss);
+        return db->exec_local_wr(oss);
     };
 
     /**
@@ -409,6 +411,7 @@ private:
      * append_template with this method
      *    @param error string describing the error if any
      *    @return 0 on success
+     * - encrypt VCENTER_PASSWORD attribute.
      */
     int post_update_template(string& error);
 };

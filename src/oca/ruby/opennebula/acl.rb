@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -23,19 +23,23 @@ module OpenNebula
     #                  @<num>
     #                  ALL
     #     RESOURCE  -> + separated list and "/{#,@,%}<num>|ALL"
-    #                  VM,
+    #                  VM
     #                  HOST
     #                  NET
     #                  IMAGE
     #                  USER
     #                  TEMPLATE
     #                  GROUP
-    #                  ACL
+    #                  DATASTORE
+    #                  CLUSTER
+    #                  DOCUMENT
+    #                  ZONE
     #                  SECGROUP
     #                  VDC
     #                  VROUTER
     #                  MARKETPLACE
     #                  MARKETPLACEAPP
+    #                  VMGROUP
     #     RIGHTS    -> + separated list
     #                  USE
     #                  MANAGE
@@ -67,7 +71,8 @@ module OpenNebula
             "VDC"           =>  0x2000000000000,
             "VROUTER"       =>  0x4000000000000,
             "MARKETPLACE"   =>  0x8000000000000,
-            "MARKETPLACEAPP"=> 0x10000000000000
+            "MARKETPLACEAPP"=> 0x10000000000000,
+            "VMGROUP"       => 0x20000000000000
         }
 
         RIGHTS =

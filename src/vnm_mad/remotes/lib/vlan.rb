@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -46,6 +46,9 @@ module VNMMAD
                 # Create the bridge.
                 create_bridge
 
+                # Check that no other vlans are connected to this bridge
+                validate_vlan_id if @nic[:conf][:validate_vlan_id]
+
                 # Return if vlan device is already in the bridge.
                 next if @bridges[@nic[:bridge]].include? @nic[:vlan_dev]
 
@@ -91,6 +94,9 @@ module VNMMAD
                 # Get the name of the vlan device.
                 get_vlan_dev_name
 
+                # Return if the bridge doesn't exist because it was already deleted (handles last vm with multiple nics on the same vlan)
+                next if !@bridges.include? @nic[:bridge]
+
                 # Return if the vlan device is not the only left device in the bridge.
                 next if @bridges[@nic[:bridge]].length > 1 or !@bridges[@nic[:bridge]].include? @nic[:vlan_dev]
 
@@ -121,9 +127,28 @@ module VNMMAD
 
             OpenNebula.exec_and_log("#{command(:brctl)} addbr #{@nic[:bridge]}")
 
+            set_bridge_options
+
             @bridges[@nic[:bridge]] = Array.new
 
             OpenNebula.exec_and_log("#{command(:ip)} link set #{@nic[:bridge]} up")
+        end
+
+        # Calls brctl to set options stored in bridge_conf
+        def set_bridge_options
+            @nic[:bridge_conf].each do |option, value|
+                case value
+                when true
+                    value = "on"
+                when false
+                    value = "off"
+                end
+
+                cmd = "#{command(:brctl)} #{option} " <<
+                        "#{@nic[:bridge]} #{value}"
+
+                OpenNebula.exec_and_log(cmd)
+            end
         end
 
         # Get hypervisor bridges
@@ -148,6 +173,28 @@ module VNMMAD
             end
 
             bridges
+        end
+
+        def get_interface_vlan(name)
+            nil
+        end
+
+        def validate_vlan_id
+            @bridges[@nic[:bridge]].each do |interface|
+                vlan = get_interface_vlan(interface)
+
+                if vlan && vlan.to_s != @nic[:vlan_id]
+                    OpenNebula.log_error("The interface #{interface} has "\
+                        "vlan_id = #{vlan} but the network is configured "\
+                        "with vlan_id = #{@nic[:vlan_id]}")
+
+                    msg = "Interface with an incorrect vlan_id is already in "\
+                          "the bridge"
+                    OpenNebula.error_message(msg)
+
+                    exit(-1)
+                end
+            end
         end
     end
 end

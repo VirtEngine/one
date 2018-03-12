@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -322,7 +322,7 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
             vm->unlock();
         }
 
-        lcm->trigger(LifeCycleManager::UPDATESG, sgid);
+        lcm->trigger(LCMAction::UPDATESG, sgid);
         return;
     }
 
@@ -348,7 +348,7 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
 
     if ( action == "DEPLOY" )
     {
-        LifeCycleManager::Actions action = LifeCycleManager::DEPLOY_SUCCESS;
+        LCMAction::Actions action = LCMAction::DEPLOY_SUCCESS;
 
         if (result == "SUCCESS")
         {
@@ -362,13 +362,13 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
             }
             else
             {
-                action = LifeCycleManager::DEPLOY_FAILURE;
+                action = LCMAction::DEPLOY_FAILURE;
                 log_error(vm,os,is,"Empty deploy ID for virtual machine");
             }
         }
         else
         {
-            action = LifeCycleManager::DEPLOY_FAILURE;
+            action = LCMAction::DEPLOY_FAILURE;
             log_error(vm,os,is,"Error deploying virtual machine");
         }
 
@@ -380,70 +380,70 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
     {
         if (result == "SUCCESS")
         {
-            lcm->trigger(LifeCycleManager::SHUTDOWN_SUCCESS, id);
+            lcm->trigger(LCMAction::SHUTDOWN_SUCCESS, id);
         }
         else
         {
             log_error(vm,os,is,"Error shutting down VM");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::SHUTDOWN_FAILURE, id);
+            lcm->trigger(LCMAction::SHUTDOWN_FAILURE, id);
         }
     }
     else if ( action == "CANCEL" )
     {
         if (result == "SUCCESS")
         {
-            lcm->trigger(LifeCycleManager::CANCEL_SUCCESS, id);
+            lcm->trigger(LCMAction::CANCEL_SUCCESS, id);
         }
         else
         {
             log_error(vm,os,is,"Error canceling VM");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::CANCEL_FAILURE, id);
+            lcm->trigger(LCMAction::CANCEL_FAILURE, id);
         }
     }
     else if ( action == "SAVE" )
     {
         if (result == "SUCCESS")
         {
-            lcm->trigger(LifeCycleManager::SAVE_SUCCESS, id);
+            lcm->trigger(LCMAction::SAVE_SUCCESS, id);
         }
         else
         {
             log_error(vm,os,is,"Error saving VM state");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::SAVE_FAILURE, id);
+            lcm->trigger(LCMAction::SAVE_FAILURE, id);
         }
     }
     else if ( action == "RESTORE" )
     {
         if (result == "SUCCESS")
         {
-            lcm->trigger(LifeCycleManager::DEPLOY_SUCCESS, id);
+            lcm->trigger(LCMAction::DEPLOY_SUCCESS, id);
         }
         else
         {
             log_error(vm,os,is,"Error restoring VM");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::DEPLOY_FAILURE, id);
+            lcm->trigger(LCMAction::DEPLOY_FAILURE, id);
         }
     }
     else if ( action == "MIGRATE" )
     {
         if (result == "SUCCESS")
         {
-            lcm->trigger(LifeCycleManager::DEPLOY_SUCCESS, id);
+            lcm->trigger(LCMAction::DEPLOY_SUCCESS, id);
         }
         else
         {
             log_error(vm, os, is, "Error live migrating VM");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::DEPLOY_FAILURE, id);
+            lcm->trigger(LCMAction::DEPLOY_FAILURE, id);
         }
     }
     else if ( action == "REBOOT" )
@@ -476,14 +476,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM", Log::INFO, "VM Disk successfully attached.");
 
-            lcm->trigger(LifeCycleManager::ATTACH_SUCCESS, id);
+            lcm->trigger(LCMAction::ATTACH_SUCCESS, id);
         }
         else
         {
             log_error(vm, os, is, "Error attaching new VM Disk");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::ATTACH_FAILURE, id);
+            lcm->trigger(LCMAction::ATTACH_FAILURE, id);
         }
     }
     else if ( action == "DETACHDISK" )
@@ -492,14 +492,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM",Log::INFO,"VM Disk successfully detached.");
 
-            lcm->trigger(LifeCycleManager::DETACH_SUCCESS, id);
+            lcm->trigger(LCMAction::DETACH_SUCCESS, id);
         }
         else
         {
             log_error(vm,os,is,"Error detaching VM Disk");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::DETACH_FAILURE, id);
+            lcm->trigger(LCMAction::DETACH_FAILURE, id);
         }
     }
     else if ( action == "ATTACHNIC" )
@@ -508,14 +508,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM", Log::INFO, "VM NIC Successfully attached.");
 
-            lcm->trigger(LifeCycleManager::ATTACH_NIC_SUCCESS, id);
+            lcm->trigger(LCMAction::ATTACH_NIC_SUCCESS, id);
         }
         else
         {
             log_error(vm, os, is, "Error attaching new VM NIC");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::ATTACH_NIC_FAILURE, id);
+            lcm->trigger(LCMAction::ATTACH_NIC_FAILURE, id);
         }
     }
     else if ( action == "DETACHNIC" )
@@ -524,14 +524,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM",Log::INFO, "VM NIC Successfully detached.");
 
-            lcm->trigger(LifeCycleManager::DETACH_NIC_SUCCESS, id);
+            lcm->trigger(LCMAction::DETACH_NIC_SUCCESS, id);
         }
         else
         {
             log_error(vm,os,is,"Error detaching VM NIC");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::DETACH_NIC_FAILURE, id);
+            lcm->trigger(LCMAction::DETACH_NIC_FAILURE, id);
         }
     }
     else if ( action == "SNAPSHOTCREATE" )
@@ -548,14 +548,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
 
             vm->log("VMM", Log::INFO, "VM Snapshot successfully created.");
 
-            lcm->trigger(LifeCycleManager::SNAPSHOT_CREATE_SUCCESS, id);
+            lcm->trigger(LCMAction::SNAPSHOT_CREATE_SUCCESS, id);
         }
         else
         {
             log_error(vm, os, is, "Error creating new VM Snapshot");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::SNAPSHOT_CREATE_FAILURE, id);
+            lcm->trigger(LCMAction::SNAPSHOT_CREATE_FAILURE, id);
         }
     }
     else if ( action == "SNAPSHOTREVERT" )
@@ -564,14 +564,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM",Log::INFO,"VM Snapshot successfully reverted.");
 
-            lcm->trigger(LifeCycleManager::SNAPSHOT_REVERT_SUCCESS, id);
+            lcm->trigger(LCMAction::SNAPSHOT_REVERT_SUCCESS, id);
         }
         else
         {
             log_error(vm,os,is,"Error reverting VM Snapshot");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::SNAPSHOT_REVERT_FAILURE, id);
+            lcm->trigger(LCMAction::SNAPSHOT_REVERT_FAILURE, id);
         }
     }
     else if ( action == "SNAPSHOTDELETE" )
@@ -580,14 +580,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM",Log::INFO,"VM Snapshot successfully deleted.");
 
-            lcm->trigger(LifeCycleManager::SNAPSHOT_DELETE_SUCCESS, id);
+            lcm->trigger(LCMAction::SNAPSHOT_DELETE_SUCCESS, id);
         }
         else
         {
             log_error(vm,os,is,"Error deleting VM Snapshot");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::SNAPSHOT_DELETE_FAILURE, id);
+            lcm->trigger(LCMAction::SNAPSHOT_DELETE_FAILURE, id);
         }
     }
     else if ( action == "DISKSNAPSHOTCREATE" )
@@ -596,14 +596,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM", Log::INFO, "VM disk snapshot successfully created.");
 
-            lcm->trigger(LifeCycleManager::DISK_SNAPSHOT_SUCCESS, id);
+            lcm->trigger(LCMAction::DISK_SNAPSHOT_SUCCESS, id);
         }
         else
         {
             log_error(vm, os, is, "Error creating new disk snapshot");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::DISK_SNAPSHOT_FAILURE, id);
+            lcm->trigger(LCMAction::DISK_SNAPSHOT_FAILURE, id);
         }
     }
     else if ( action == "DISKSNAPSHOTREVERT" )
@@ -612,14 +612,30 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM", Log::INFO, "VM disk state reverted.");
 
-            lcm->trigger(LifeCycleManager::DISK_SNAPSHOT_SUCCESS, id);
+            lcm->trigger(LCMAction::DISK_SNAPSHOT_SUCCESS, id);
         }
         else
         {
             log_error(vm, os, is, "Error reverting disk snapshot");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::DISK_SNAPSHOT_FAILURE, id);
+            lcm->trigger(LCMAction::DISK_SNAPSHOT_FAILURE, id);
+        }
+    }
+    else if ( action == "RESIZEDISK" )
+    {
+        if ( result == "SUCCESS" )
+        {
+            vm->log("VMM", Log::INFO, "VM disk successfully resized");
+
+            lcm->trigger(LCMAction::DISK_RESIZE_SUCCESS, id);
+        }
+        else
+        {
+            log_error(vm, os, is, "Error resizing disk");
+            vmpool->update(vm);
+
+            lcm->trigger(LCMAction::DISK_RESIZE_FAILURE, id);
         }
     }
     else if ( action == "CLEANUP" )
@@ -628,14 +644,14 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
         {
             vm->log("VMM", Log::INFO, "Host successfully cleaned.");
 
-            lcm->trigger(LifeCycleManager::CLEANUP_SUCCESS, id);
+            lcm->trigger(LCMAction::CLEANUP_SUCCESS, id);
         }
         else
         {
             log_error(vm, os, is, "Error cleaning Host");
             vmpool->update(vm);
 
-            lcm->trigger(LifeCycleManager::CLEANUP_FAILURE, id);
+            lcm->trigger(LCMAction::CLEANUP_FAILURE, id);
         }
     }
     else if ( action == "POLL" )
@@ -645,13 +661,13 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
             string monitor_str;
             getline(is, monitor_str);
 
-            process_poll(vm, monitor_str, true);
+            process_poll(vm, monitor_str);
         }
         else
         {
             log_monitor_error(vm, os, is, "Error monitoring VM");
 
-            lcm->trigger(LifeCycleManager::MONITOR_DONE, vm->get_oid());
+            lcm->trigger(LCMAction::MONITOR_DONE, vm->get_oid());
         }
     }
     else if (action == "LOG")
@@ -668,10 +684,7 @@ void VirtualMachineManagerDriver::protocol(const string& message) const
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void VirtualMachineManagerDriver::process_poll(
-        int id,
-        const string &monitor_str,
-        bool update_db)
+void VirtualMachineManagerDriver::process_poll(int id,const string& monitor_str)
 {
     // Get the VM from the pool
     VirtualMachine* vm = Nebula::instance().get_vmpool()->get(id,true);
@@ -681,7 +694,7 @@ void VirtualMachineManagerDriver::process_poll(
         return;
     }
 
-    process_poll(vm, monitor_str, update_db);
+    process_poll(vm, monitor_str);
 
     vm->unlock();
 }
@@ -689,10 +702,8 @@ void VirtualMachineManagerDriver::process_poll(
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void VirtualMachineManagerDriver::process_poll(
-        VirtualMachine* vm,
-        const string&   monitor_str,
-        bool            update_db)
+void VirtualMachineManagerDriver::process_poll(VirtualMachine* vm,
+    const string& monitor_str)
 {
     char state;
 
@@ -707,19 +718,14 @@ void VirtualMachineManagerDriver::process_poll(
 
     if (vm->get_state() == VirtualMachine::ACTIVE)
     {
-        int rc = vm->update_info(monitor_str);
-
-        if ( update_db )
+        if (vm->update_info(monitor_str) == 0)
         {
-            if ( rc == 0)
-            {
-                vmpool->update_history(vm);
+            vmpool->update_history(vm);
 
-                vmpool->update_monitoring(vm);
-            }
-
-            vmpool->update(vm);
+            vmpool->update_monitoring(vm);
         }
+
+        vmpool->update(vm);
 
         VirtualMachineMonitorInfo &minfo = vm->get_info();
 
@@ -768,7 +774,7 @@ void VirtualMachineManagerDriver::process_poll(
                     vm->get_lcm_state() == VirtualMachine::BOOT_UNDEPLOY_FAILURE ||
                     vm->get_lcm_state() == VirtualMachine::BOOT_FAILURE )))
             {
-                lcm->trigger(LifeCycleManager::MONITOR_POWERON, vm->get_oid());
+                lcm->trigger(LCMAction::MONITOR_POWERON, vm->get_oid());
             }
 
             break;
@@ -780,7 +786,7 @@ void VirtualMachineManagerDriver::process_poll(
             {
                 vm->log("VMM",Log::INFO, "VM running but monitor state is PAUSED.");
 
-                lcm->trigger(LifeCycleManager::MONITOR_SUSPEND, vm->get_oid());
+                lcm->trigger(LCMAction::MONITOR_SUSPEND, vm->get_oid());
             }
             break;
 
@@ -790,7 +796,7 @@ void VirtualMachineManagerDriver::process_poll(
             {
                 vm->log("VMM",Log::INFO,"VM running but monitor state is ERROR.");
 
-                lcm->trigger(LifeCycleManager::MONITOR_DONE, vm->get_oid());
+                lcm->trigger(LCMAction::MONITOR_DONE, vm->get_oid());
             }
             break;
 
@@ -801,7 +807,7 @@ void VirtualMachineManagerDriver::process_poll(
                   vm->get_lcm_state() == VirtualMachine::SHUTDOWN_POWEROFF ||
                   vm->get_lcm_state() == VirtualMachine::SHUTDOWN_UNDEPLOY ))
             {
-                lcm->trigger(LifeCycleManager::MONITOR_POWEROFF, vm->get_oid());
+                lcm->trigger(LCMAction::MONITOR_POWEROFF, vm->get_oid());
             }
             break;
     }

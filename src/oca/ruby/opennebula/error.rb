@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -28,7 +28,9 @@ module OpenNebula
         EACTION         = 0x0800
         EXML_RPC_API    = 0x1000
         EINTERNAL       = 0x2000
-        ENOTDEFINED     = 0x1111
+        EALLOCATE       = 0x4000
+        ENOTDEFINED     = 0xF001
+        EXML_RPC_CALL   = 0xF002
 
         attr_reader :message, :errno
 
@@ -42,6 +44,11 @@ module OpenNebula
         def to_str()
             @message
         end
+
+        def is_exml_rpc_call?()
+            @errno == EXML_RPC_CALL
+        end
+
     end
 
     # Returns true if the object returned by a method of the OpenNebula
@@ -49,4 +56,5 @@ module OpenNebula
     def self.is_error?(value)
         value.class==OpenNebula::Error
     end
+
 end

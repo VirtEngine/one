@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -54,7 +54,6 @@ define(function(require) {
         tick_val += opts.tick_size;
       }
     }
-
     sliderId += 1;
     return TemplateHTML(opts);
   }
@@ -62,7 +61,10 @@ define(function(require) {
   function _initialSetup() {
     $(document).off("input", "input.uinput-slider-val");
     $(document).on("input", "input.uinput-slider-val", function(){
+      var max = $("input[type=number]", $(this).closest('.uinput-slider-container')).attr('max');
       $("input[type=range]", $(this).closest('.uinput-slider-container')).val( this.value );
+      if(parseInt(this.value) > parseInt(max))
+        $("input[type=number]", $(this).closest('.uinput-slider-container')).val(max);
     });
 
     $(document).off("input", "input.uinput-slider");

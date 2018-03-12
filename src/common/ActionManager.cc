@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -16,22 +16,12 @@
 
 #include "ActionManager.h"
 #include <ctime>
-#include <cerrno>
 
 /* ************************************************************************** */
-/* NeActionManager constants                                                  */
+/* ActionManager constructor & destructor                                   */
 /* ************************************************************************** */
 
-const string ActionListener::ACTION_TIMER = string("ACTION_TIMER");
-const string ActionListener::ACTION_FINALIZE = string("ACTION_FINALIZE");
-
-/* ************************************************************************** */
-/* NeActionManager constructor & destructor                                   */
-/* ************************************************************************** */
-
-ActionManager::ActionManager():
-        actions(),
-        listener(0)
+ActionManager::ActionManager(): listener(0)
 {
     pthread_mutex_init(&mutex,0);
 
@@ -42,6 +32,12 @@ ActionManager::ActionManager():
 
 ActionManager::~ActionManager()
 {
+    while (!actions.empty())
+    {
+        delete actions.front();
+        actions.pop();
+    }
+
     pthread_mutex_destroy(&mutex);
 
     pthread_cond_destroy(&cond);
@@ -51,15 +47,11 @@ ActionManager::~ActionManager()
 /* NeActionManager public interface                                           */
 /* ************************************************************************** */
 
-void ActionManager::trigger(
-    const string    &action,
-    void *          arg)
+void ActionManager::trigger(const ActionRequest& ar )
 {
-    ActionRequest   request(action,arg);
-
     lock();
 
-    actions.push(request);
+    actions.push(ar.clone());
 
     pthread_cond_signal(&cond);
 
@@ -69,19 +61,30 @@ void ActionManager::trigger(
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void ActionManager::loop(
-    time_t      timer,
-    void *      timer_args)
+static void set_timeout(struct timespec& timeout, struct timespec& _tout)
 {
-    struct timespec     timeout;
-    int                 finalize = 0;
-    int                 rc;
+    clock_gettime(CLOCK_REALTIME, &timeout);
 
-    ActionRequest       action;
-    ActionRequest       trequest(ActionListener::ACTION_TIMER,timer_args);
+    timeout.tv_sec  += _tout.tv_sec;
+    timeout.tv_nsec += _tout.tv_nsec;
 
-    timeout.tv_sec  = time(NULL) + timer;
-    timeout.tv_nsec = 0;
+    while ( timeout.tv_nsec >= 1000000000 )
+    {
+        timeout.tv_sec  += 1;
+        timeout.tv_nsec -= 1000000000;
+    }
+}
+
+void ActionManager::loop(struct timespec& _tout, const ActionRequest& trequest)
+{
+    struct timespec timeout;
+
+    int finalize = 0;
+    int rc;
+
+    ActionRequest * action;
+
+    set_timeout(timeout, _tout);
 
     //Action Loop, end when a finalize action is triggered to this manager
     while (finalize == 0)
@@ -90,12 +93,12 @@ void ActionManager::loop(
 
         while ( actions.empty() == true )
         {
-            if ( timer != 0 )
+            if ( _tout.tv_sec != 0 || _tout.tv_nsec != 0 )
             {
-                rc = pthread_cond_timedwait(&cond,&mutex, &timeout);
+                rc = pthread_cond_timedwait(&cond, &mutex, &timeout);
 
                 if ( rc == ETIMEDOUT )
-                    actions.push(trequest);
+                    actions.push(trequest.clone());
             }
             else
                 pthread_cond_wait(&cond,&mutex);
@@ -106,17 +109,23 @@ void ActionManager::loop(
 
         unlock();
 
-        listener->do_action(action.name,action.args);
+        listener->_do_action(*action);
 
-        if ( action.name == ActionListener::ACTION_TIMER )
+        switch(action->type())
         {
-            timeout.tv_sec  = time(NULL) + timer;
-            timeout.tv_nsec = 0;
+            case ActionRequest::TIMER:
+                set_timeout(timeout, _tout);
+            break;
+
+            case ActionRequest::FINALIZE:
+                finalize = 1;
+            break;
+
+            default:
+            break;
         }
-        else if ( action.name == ActionListener::ACTION_FINALIZE )
-        {
-            finalize = 1;
-        }
+
+        delete action;
     }
 }
 

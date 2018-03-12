@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -15,6 +15,7 @@
 #--------------------------------------------------------------------------- #
 
 require 'vnmmad'
+require 'vxlan'
 
 ################################################################################
 # This driver tag VM traffic with a VLAN_ID using VXLAN protocol. Features:
@@ -24,6 +25,7 @@ require 'vnmmad'
 # Once activated the VM will be attached to this bridge
 ################################################################################
 class VXLANDriver < VNMMAD::VLANDriver
+    include VXLAN
 
     # DRIVER name and XPATH for relevant NICs
     DRIVER       = "vxlan"
@@ -35,23 +37,10 @@ class VXLANDriver < VNMMAD::VLANDriver
     def initialize(vm, xpath_filter = nil, deploy_id = nil)
         @locking = true
 
+        @attr_vlan_id  = ATTR_VLAN_ID
+        @attr_vlan_dev = ATTR_VLAN_DEV
+
         xpath_filter ||= XPATH_FILTER
         super(vm, xpath_filter, deploy_id)
-    end
-
-    ############################################################################
-    # This function creates and activate a VLAN device
-    ############################################################################
-    def create_vlan_dev
-        mc  = VNMMAD::VNMNetwork::IPv4.to_i(CONF[:vxlan_mc]) + @nic[:vlan_id].to_i
-        mcs = VNMMAD::VNMNetwork::IPv4.to_s(mc)
-        mtu = @nic[:mtu] ? "mtu #{@nic[:mtu]}" : ""
-        ttl = CONF[:vxlan_ttl] ? "ttl #{CONF[:vxlan_ttl]}" : ""
-
-        OpenNebula.exec_and_log("#{command(:ip)} link add #{@nic[:vlan_dev]}"\
-            " #{mtu} type vxlan id #{@nic[:vlan_id]} group #{mcs} #{ttl}"\
-            " dev #{@nic[:phydev]}")
-
-        OpenNebula.exec_and_log("#{command(:ip)} link set #{@nic[:vlan_dev]} up")
     end
 end

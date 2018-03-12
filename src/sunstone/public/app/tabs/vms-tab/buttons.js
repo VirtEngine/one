@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -17,8 +17,13 @@
 define(function(require) {
   var Locale = require('utils/locale');
   var Tips = require('utils/tips');
-
-  var Buttons = {
+  var Config = require('sunstone-config');
+  var confirm = Config.confirmVMActions;
+  var text = "action";
+  if(confirm){
+    text = "confirm";
+  }
+    var Buttons = {
     "VM.refresh" : {
       type: "action",
       layout: "refresh",
@@ -44,7 +49,7 @@ define(function(require) {
       tip: Locale.tr("Select the new group")
     },
     "VM.deploy" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Deploy"),
       layout: "vmsplanification_buttons",
       custom_classes : "state-dependent"
@@ -74,79 +79,83 @@ define(function(require) {
       custom_classes : "state-dependent"
     },
     "VM.suspend" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Suspend") + "<span class='right'>&nbsp;" + Tips.html(Locale.tr("Keeps allocated Host resources. The resume operation happens quickly")) + "</span>",
       layout: "vmspause_buttons",
       custom_classes : "state-dependent"
     },
     "VM.resume" : {
-      type: "action",
-      text: '<i class="fa fa-play"/>',
+      type: text,
+      text: '<i class="fas fa-play"/>',
       layout: "vmsplay_buttons",
       custom_classes : "state-dependent"
     },
     "VM.stop" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Stop")  + "<span class='right'>&nbsp;" + Tips.html(Locale.tr("Frees Host resources. The resume operation may take long")) + "</span>",
       layout: "vmspause_buttons",
       custom_classes : "state-dependent"
     },
     "VM.reboot" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Reboot"),
       layout: "vmsrepeat_buttons",
       custom_classes : "state-dependent"
     },
     "VM.reboot_hard" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Reboot") + ' <span class="label secondary radius">' + Locale.tr("hard") + '</span>',
       layout: "vmsrepeat_buttons",
       custom_classes : "state-dependent"
     },
     "VM.poweroff" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Power Off") + "<span class='right'>&nbsp;" + Tips.html(Locale.tr("Keeps allocated Host resources. The resume operation happens quickly")) + "</span>",
       layout: "vmsstop_buttons",
       custom_classes : "state-dependent"
     },
     "VM.poweroff_hard" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Power Off") + ' <span class="label secondary radius">' + Locale.tr("hard") + '</span>'  + "<span class='right'>&nbsp;" + Tips.html(Locale.tr("Keeps allocated Host resources. The resume operation happens quickly")) + "</span>",
       layout: "vmsstop_buttons",
       custom_classes : "state-dependent"
     },
     "VM.undeploy" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Undeploy")  + "<span class='right'>&nbsp;" + Tips.html(Locale.tr("Frees Host resources. The resume operation may take long")) + "</span>",
       layout: "vmsstop_buttons",
       custom_classes : "state-dependent"
     },
     "VM.undeploy_hard" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Undeploy") + ' <span class="label secondary radius">' + Locale.tr("hard") + '</span>'  + "<span class='right'>&nbsp;" + Tips.html(Locale.tr("Frees Host resources. The resume operation may take long")) + "</span>",
       layout: "vmsstop_buttons",
       custom_classes : "state-dependent"
     },
     "VM.terminate" : {
       type: "confirm",
-      text: Locale.tr("Terminate"),
+      icon: "<i class='fas fa-trash fa-3' style='color:#ec5840'/>",
+      text: Locale.tr(" Terminate"),
       layout: "vmsdelete_buttons",
+      tip: Locale.tr("This will remove information from non-persistent hard disks"),
       custom_classes : "state-dependent"
     },
     "VM.terminate_hard" : {
       type: "confirm",
-      text: Locale.tr("Terminate") + ' <span class="label secondary radius">' + Locale.tr("hard") + '</span>',
+      icon: "<i class='fas fa-trash fa-3' style='color:#ec5840'/>",
+      text: Locale.tr(" Terminate") + ' <span class="label secondary radius">' + Locale.tr("hard") + '</span>',
       layout: "vmsdelete_buttons",
+      tip: Locale.tr("This will remove information from non-persistent hard disks"),
       custom_classes : "state-dependent"
     },
     "VM.resched" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Reschedule"),
       layout: "vmsplanification_buttons",
       custom_classes : "state-dependent"
     },
     "VM.unresched" : {
-      type: "action",
+      type: text,
       text: Locale.tr("Un-Reschedule"),
       layout: "vmsplanification_buttons",
       custom_classes : "state-dependent"
@@ -173,23 +182,45 @@ define(function(require) {
     },
     "VM.startvnc" : {
       type: "action",
-      text: '<i class="fa fa-desktop"/> ' + Locale.tr("VNC"),
+      text: '<i class="fas fa-desktop"/> ' + Locale.tr("VNC"),
       custom_classes: "only-sunstone-info vnc-sunstone-info"
     },
     "VM.startspice" : {
       type: "action",
-      text: '<i class="fa fa-desktop"/> ' + Locale.tr("SPICE"),
+      text: '<i class="fas fa-desktop"/> ' + Locale.tr("SPICE"),
       custom_classes: "only-sunstone-info spice-sunstone-info"
     },
     "VM.save_as_template" : {
       type: "action",
-      text: '<i class="fa fa-save"/>',
+      text: '<i class="fas fa-save"/>',
       custom_classes : "state-dependent"
     },
     "VM.edit_labels" : {
       layout: "labels",
+    },
+    // "VM.lockA" : {
+    //   type: "action",
+    //   text: Locale.tr("Admin"),
+    //   layout: "lock_buttons",
+    //   data: 3
+    // },
+    // "VM.lockM" : {
+    //   type: "action",
+    //   text: Locale.tr("Manage"),
+    //   layout: "lock_buttons",
+    //   data: 2
+    // },
+    "VM.lockU" : {
+      type: "action",
+      text: Locale.tr("Lock"),
+      layout: "lock_buttons",
+      data: 1
+    },
+    "VM.unlock" : {
+      type: "action",
+      text: Locale.tr("Unlock"),
+      layout: "lock_buttons"
     }
   }
-
   return Buttons;
 })

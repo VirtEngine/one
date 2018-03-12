@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -16,6 +16,9 @@
 
 define(function(require) {
   var Locale = require('utils/locale');
+  var OpenNebulaUser = require('opennebula/user');
+  var Sunstone = require('sunstone');
+  var TemplateUtils = require('utils/template-utils');
 
   /*
     CONSTRUCTOR
@@ -58,9 +61,11 @@ define(function(require) {
 
     if (collapsed) {
       if (tree.subTree.length > 0) {
-        html = '<li><i class="left tree-toggle fa fa-fw fa-angle-right"></i> ';
+        html = '<li><i class="left tree-toggle fas fa-fw fa-angle-right"></i> ';
       } else {
         var title = $(tree.htmlStr).attr('title');
+        var persis = $(tree.htmlStr).attr('persis');
+        var yaml = $(tree.htmlStr).attr('yaml');
         var color = _labelHue(title);
 
         if (title != undefined && title != "") {
@@ -69,7 +74,7 @@ define(function(require) {
           html = '<li>';
         }
 
-        html += '<i class="left fa fa-fw fa-tag"></i> ';
+        html += '<i class="left fas fa-fw fa-tag"></i> ';
       }
 
       html += '<div class="labeltree-line">';
@@ -79,9 +84,11 @@ define(function(require) {
       html += '<ul class="is-active" hidden>';
     } else {
       if (tree.subTree.length > 0) {
-        html = '<li><i class="left tree-toggle fa fa-fw fa-angle-down"></i> ';
+        html = '<li><i class="left tree-toggle fas fa-fw fa-angle-down"></i> ';
       } else {
         var title = $(tree.htmlStr).attr('title');
+        var persis = $(tree.htmlStr).attr('persis');
+        var yaml = $(tree.htmlStr).attr('yaml');
         var color = _labelHue(title);
 
         if (title != undefined && title != "") {
@@ -89,12 +96,18 @@ define(function(require) {
         } else {
           html = '<li>';
         }
-
-        html += '<i class="left fa fa-fw fa-tag"></i> ';
+        if (!yaml) {
+          if (!persis) {
+            html += '<a class="lock" type="unlock" title="' + title + '"><i class="left fas fa-fw fa-unlock" style="color:hsl(' + color + ', 90%, 70%);"></i></a>';
+          } else {
+            html += '<a class="lock" type="lock" title="' + title + '"><i class="left fas fa-fw fa-lock" style="color:hsl(' + color + ', 90%, 70%);"></i></a>';
+          }
+        }
+        html += '<i class="left fas fa-fw fa-tag"></i> ';
       }
 
       html += '<div class="labeltree-line">';
-      html += '<i class="fa fa-fw fa-square-o labelsCheckbox"></i> ';
+      html += '<i class="fas fa-fw fa-square-o labelsCheckbox"></i> ';
 
       html += tree.htmlStr;
       html += '</div>';
@@ -130,6 +143,48 @@ define(function(require) {
       if (!active){
         $('.one-label', this).addClass('active');
       }
+    });
+
+    $(".lock", context).on("click", function(){
+      var type = $(this).attr("type");
+      var title = $(this).attr("title");
+      if (type == "unlock"){
+        $(".fa-unlock", this).attr("class", "left fas fa-fw fa-lock");
+        $(this).attr("type", "lock");
+      } else {
+        $(".fa-lock", this).attr("class", "left fas fa-fw fa-unlock");
+        $(this).attr("type", "unlock");
+      }
+      var that = this;
+      OpenNebulaUser.show({
+        data : {
+          id: config['user_id']
+        },
+        success: function(request, user_json) {
+          var final_template = {};
+          if (user_json["USER"]["TEMPLATE"]) {
+            if (user_json["USER"]["TEMPLATE"]["LABELS"]) {
+              var titles = user_json["USER"]["TEMPLATE"]["LABELS"].split(",");
+              var pos = titles.indexOf(title);
+              if (type == "lock" && pos != -1){ //unlock
+                titles.splice(pos, 1);
+                $(this).removeAttr("locked");
+              } else if (type == "unlock" && pos == -1) { //lock
+                titles.push(title);
+                $(this).attr("locked", "true");
+              }
+              user_json["USER"]["TEMPLATE"]["LABELS"] = titles.join(",");
+            } else {
+              user_json["USER"]["TEMPLATE"]["LABELS"] = title;
+            }
+            if (user_json["USER"]["TEMPLATE"]["LABELS"] == ""){
+              delete user_json["USER"]["TEMPLATE"]["LABELS"];
+            }
+            template_str = TemplateUtils.templateToString(user_json["USER"]["TEMPLATE"]);
+            Sunstone.runAction("User.update_template", config['user_id'], template_str);
+          }
+        }
+        });
     });
   }
 

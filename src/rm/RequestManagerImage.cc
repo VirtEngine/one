@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -117,6 +117,15 @@ Request::ErrorCode ImagePersistent::request_execute(
     }
 
     ds_id = image->get_ds_id();
+
+    if ( !image->is_managed() )
+    {
+        att.resp_msg = "Cannot change persistent state for non-managed images";
+
+        image->unlock();
+
+        return ACTION;
+    }
 
     image->unlock();
 
@@ -382,6 +391,9 @@ Request::ErrorCode ImageClone::request_execute(
 
     img->unlock();
 
+    //Update persistent attribute from base image if needed
+    Image::test_set_persistent(tmpl, att.uid, att.gid, false);
+
     // ----------------------- Get target Datastore info -----------------------
 
     ds = dspool->get(ds_id, true);
@@ -503,7 +515,8 @@ Request::ErrorCode ImageClone::request_execute(
 
         // -------------------------- Check Quotas  ----------------------------
 
-        if ( quota_authorization(&img_usage, Quotas::DATASTORE, att, att.resp_msg) == false )
+        if ( quota_authorization(&img_usage, Quotas::DATASTORE, att,
+                    att.resp_msg) == false )
         {
             delete tmpl;
             return AUTHORIZATION;

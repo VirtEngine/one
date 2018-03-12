@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -21,16 +21,17 @@ define(function(require) {
   var Humanize = require('utils/humanize');
   var TemplateUtils = require('utils/template-utils');
   var LabelsUtils = require('utils/labels/utils');
+  var Status = require('utils/status');
 
   var RESOURCE = "VM";
   var XML_ROOT = "VM";
   var TEMPLATE_ATTR = 'USER_TEMPLATE';
 
   var _columns = [
-    Locale.tr("ID") ,
-    Locale.tr("Owner") ,
-    Locale.tr("Group"),
+    Locale.tr("ID"),
     Locale.tr("Name"),
+    Locale.tr("Owner"),
+    Locale.tr("Group"),
     Locale.tr("Status"),
     Locale.tr("Used CPU"),
     Locale.tr("Used Memory"),
@@ -63,10 +64,13 @@ define(function(require) {
     // VNC icon
     var vncIcon;
     if (OpenNebulaVM.isVNCSupported(element)) {
-      vncIcon = '<a class="vnc" href="#" vm_id="' + element.ID + '"><i class="fa fa-desktop"/></a>';
+      vncIcon = '<a class="vnc" href="#" vm_id="' + element.ID + '"><i class="fas fa-desktop"/></a>';
     } else if (OpenNebulaVM.isSPICESupported(element)) {
-      vncIcon = '<a class="spice" href="#" vm_id="' + element.ID + '"><i class="fa fa-desktop"/></a>';
+      vncIcon = '<a class="spice" href="#" vm_id="' + element.ID + '"><i class="fas fa-desktop"/></a>';
     } else {
+      vncIcon = '';
+    }
+    if (config["federation_mode"] == "SLAVE") {
       vncIcon = '';
     }
 
@@ -105,30 +109,38 @@ define(function(require) {
       STIME_AFTER:  element.STIME,
       STIME_BEFORE: element.STIME
     }
+    if (OpenNebulaVM.isFailureState(element.LCM_STATE)){
+      value_state = "FAILED"
+    } else {
+      value_state = OpenNebulaVM.stateStr(element.STATE)
+    }
+    var color_html = Status.state_lock_to_color("VM", value_state, element_json[RESOURCE.toUpperCase()]["LOCK"]);
 
     return [
       '<input class="check_item" '+
+        'style="vertical-align: inherit;"'+
         'type="checkbox" '+
         'id="' + RESOURCE.toLowerCase() + '_' + element.ID + '" '+
         'name="selected_items" '+
         'value="' + element.ID + '" '+
-        'state="'+element.STATE+'" lcm_state="'+element.LCM_STATE+'"/>',
+        'state="'+element.STATE+'" lcm_state="'+element.LCM_STATE+'"/>'+color_html,
       element.ID,
+      element.NAME,
       element.UNAME,
       element.GNAME,
-      element.NAME,
       state,
       cpuMonitoring,
       Humanize.size(memoryMonitoring),
       hostname,
       OpenNebulaVM.ipsStr(element),
-      Humanize.prettyTime(element.STIME),
+      Humanize.prettyTimeDatatable(element.STIME),
       vncIcon,
       TemplateUtils.htmlEncode(TemplateUtils.templateToString(element)),
       (LabelsUtils.labelsStr(element[TEMPLATE_ATTR])||''),
       btoa(unescape(encodeURIComponent(JSON.stringify(search))))
     ];
   }
+
 
   function _emptyElementArray(vmId) {
     return [

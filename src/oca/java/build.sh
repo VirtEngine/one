@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -16,6 +16,8 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
+set -e
+
 #-------------------------------------------------------------------------------
 # DIR DEFINITIONS
 #-------------------------------------------------------------------------------
@@ -23,37 +25,34 @@
 DOC_DIR="./share/doc"
 BIN_DIR="./bin"
 JAR_DIR="./jar"
-LIB_DIR="./lib"
+LIB_DIR="/usr/share/java"
 EXA_DIR="./share/examples"
-TEST_DIR="./test"
 
 OCA_JAR=$JAR_DIR"/org.opennebula.client.jar"
-JUNIT_JAR="/usr/share/java/junit4.jar"
+
 
 #-------------------------------------------------------------------------------
 # COMMAND LINE PARSING
 #-------------------------------------------------------------------------------
 usage() {
  echo
- echo "Usage: build.sh [-d ] [-h] [-s] [-t] [-p version]"
+ echo "Usage: build.sh [-d ] [-h] [-s] [-p version]"
  echo
  echo "-d: build the documentation"
  echo "-s: compile the examples"
  echo "-c: clean compilation files"
- echo "-t: build the tests"
  echo "-p: build the java-oca-version-tar.gz package"
  echo "-h: prints this help"
 }
 #-------------------------------------------------------------------------------
 
-TEMP_OPT=`getopt -o hsdctp: -n 'build.sh' -- "$@"`
+TEMP_OPT=`getopt -o hsdcp: -n 'build.sh' -- "$@"`
 
 eval set -- "$TEMP_OPT"
 
 DO_DOC="no"
 DO_EXA="no"
 DO_CLEAN="no"
-DO_TESTS="no"
 DO_PACKAGE="no"
 VERSION=""
 
@@ -62,7 +61,6 @@ while true ; do
         -h) usage; exit 0;;
         -d) DO_DOC="yes"; shift ;;
         -s) DO_EXA="yes"; shift ;;
-        -t) DO_TESTS="yes"; shift ;;
         -c) DO_CLEAN="yes"; shift ;;
         -p) DO_PACKAGE="yes"; VERSION=$2; shift 2;;
         --) shift ; break ;;
@@ -87,7 +85,7 @@ do_documentation()
       -doctitle 'OpenNebula Cloud API Specification' \
       -header '<b>OpenNebula</b><br><font size="-1">Cloud API</font>' \
       -bottom 'Visit <a
-href="http://opennebula.org/">OpenNebula.org</a><br>Copyright 2002-2016 &copy;
+href="http://opennebula.org/">OpenNebula.org</a><br>Copyright 2002-2018 &copy;
 OpenNebula Project, OpenNebula Systems.'
 }
 
@@ -111,13 +109,7 @@ do_jar()
 do_examples()
 {
     echo "Compiling OpenNebula Cloud API Examples..."
-    javac -d $EXA_DIR -classpath $OCA_JAR:$LIB_DIR `find share/examples -name *.java`
-}
-
-do_tests()
-{
-    echo "Compiling OpenNebula Cloud API Tests..."
-    javac -d $TEST_DIR -classpath $OCA_JAR:$LIB_DIR:$JUNIT_JAR `find $TEST_DIR -name *.java`
+    javac -d $EXA_DIR -classpath $OCA_JAR:$LIB_DIR/* `find share/examples -name *.java`
 }
 
 do_clean()
@@ -127,7 +119,10 @@ do_clean()
     mkdir -p $BIN_DIR
 
     find share/examples -name '*.class' -delete
-    find test/ -name '*.class' -delete
+
+    if [ -d test/ ]; then
+        find test/ -name '*.class' -delete
+    fi
 
     echo "Cleaning javadoc files..."
     rm -rf $DOC_DIR > /dev/null 2>&1
@@ -151,10 +146,6 @@ if [ "$DO_EXA" = "yes" ] ; then
     do_examples
 fi
 
-if [ "$DO_TESTS" = "yes" ] ; then
-    do_tests
-fi
-
 if [ "$DO_PACKAGE" = "yes" ] ; then
     do_documentation
 
@@ -163,9 +154,8 @@ if [ "$DO_PACKAGE" = "yes" ] ; then
     mkdir $PACK_NAME
     cp -r share/doc $PACK_NAME
     cp -r jar $PACK_NAME
-    cp -r lib $PACK_NAME
 
-    tar cf $PACK_NAME.tar.gz $PACK_NAME
+    tar czf $PACK_NAME.tar.gz $PACK_NAME
 
     rm -rf $PACK_NAME
 fi

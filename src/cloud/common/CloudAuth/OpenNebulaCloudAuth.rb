@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -31,10 +31,8 @@ module OpenNebulaCloudAuth
     #
     def do_auth(env, params={})
         auth = Rack::Auth::Basic::Request.new(env)
-
         if auth.provided? && auth.basic?
             username, password = auth.credentials
-
             authenticated = false
 
             invalid_chars =
@@ -72,11 +70,11 @@ module OpenNebulaCloudAuth
 
                 rc = user.info
             end
-
             if OpenNebula.is_error?(rc)
                 if logger
                     logger.error{ "User #{username} could not be authenticated"}
                     logger.error { rc.message }
+                    throw Exception(rc.message) if rc.is_exml_rpc_call?()
                 end
                 return nil
             end

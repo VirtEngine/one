@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -83,7 +83,7 @@ void  DispatchManager::stop_success_action(int vid)
         //Set history action field to perform the right TM command on resume
         if (vm->get_action() == History::NONE_ACTION)
         {
-            vm->set_action(History::STOP_ACTION);
+            vm->set_internal_action(History::STOP_ACTION);
 
             vmpool->update_history(vm);
         }
@@ -120,6 +120,7 @@ void  DispatchManager::undeploy_success_action(int vid)
 
     if ((vm->get_state() == VirtualMachine::ACTIVE) &&
         (vm->get_lcm_state() == VirtualMachine::EPILOG_UNDEPLOY ||
+         vm->get_lcm_state() == VirtualMachine::DISK_RESIZE_UNDEPLOYED ||
          vm->get_lcm_state() == VirtualMachine::PROLOG_UNDEPLOY))
     {
         vm->set_state(VirtualMachine::UNDEPLOYED);
@@ -129,7 +130,7 @@ void  DispatchManager::undeploy_success_action(int vid)
         //Set history action field to perform the right TM command on resume
         if (vm->get_action() == History::NONE_ACTION)
         {
-            vm->set_action(History::UNDEPLOY_ACTION);
+            vm->set_internal_action(History::UNDEPLOY_ACTION);
 
             vmpool->update_history(vm);
         }
@@ -172,6 +173,7 @@ void  DispatchManager::poweroff_success_action(int vid)
          vm->get_lcm_state() == VirtualMachine::DISK_SNAPSHOT_POWEROFF ||
          vm->get_lcm_state() == VirtualMachine::DISK_SNAPSHOT_REVERT_POWEROFF ||
          vm->get_lcm_state() == VirtualMachine::DISK_SNAPSHOT_DELETE_POWEROFF ||
+         vm->get_lcm_state() == VirtualMachine::DISK_RESIZE_POWEROFF ||
          vm->get_lcm_state() == VirtualMachine::PROLOG_MIGRATE_POWEROFF_FAILURE))
     {
         vm->set_state(VirtualMachine::POWEROFF);
@@ -200,12 +202,6 @@ void  DispatchManager::poweroff_success_action(int vid)
 void  DispatchManager::done_action(int vid)
 {
     VirtualMachine * vm;
-    Template *       tmpl;
-
-    int uid;
-    int gid;
-    string deploy_id;
-    int vrid = -1;
 
     VirtualMachine::LcmState lcm_state;
     VirtualMachine::VmState  dm_state;
@@ -224,56 +220,7 @@ void  DispatchManager::done_action(int vid)
           (lcm_state == VirtualMachine::EPILOG ||
            lcm_state == VirtualMachine::CLEANUP_DELETE))
     {
-        vm->release_network_leases();
-
-        vm->release_disk_images();
-
-        vm->set_state(VirtualMachine::DONE);
-
-        vm->set_state(VirtualMachine::LCM_INIT);
-
-        vm->set_exit_time(time(0));
-
-        vmpool->update(vm);
-
-        uid  = vm->get_uid();
-        gid  = vm->get_gid();
-        tmpl = vm->clone_template();
-
-        if (vm->is_imported())
-        {
-            deploy_id = vm->get_deploy_id();
-        }
-
-        if (vm->is_vrouter())
-        {
-            vrid = vm->get_vrouter_id();
-        }
-
-        vm->unlock();
-
-        Quotas::vm_del(uid, gid, tmpl);
-
-        delete tmpl;
-
-        if (!deploy_id.empty())
-        {
-            vmpool->drop_index(deploy_id);
-        }
-
-        if (vrid != -1)
-        {
-            VirtualRouter* vr = vrouterpool->get(vrid, true);
-
-            if (vr != 0)
-            {
-                vr->del_vmid(vid);
-
-                vrouterpool->update(vr);
-
-                vr->unlock();
-            }
-        }
+        free_vm_resources(vm);
     }
     else
     {

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -25,6 +25,8 @@ define(function(require) {
   var Humanize = require('utils/humanize');
   var Notifier = require('utils/notifier');
   var Graphs = require('utils/graphs');
+  require('flot.navigate');
+  require('flot.canvas');
   var StateActions = require('../utils/state-actions');
   var OpenNebulaVM = require('opennebula/vm');
   var SecGroupsCommon = require('tabs/secgroups-tab/utils/common');
@@ -145,7 +147,7 @@ define(function(require) {
                 <div class="row">\
                   <div class="large-12 columns centered graph" id="vm_net_rx_graph" style="height: 100px;">\
                     <span  id="provision_dashboard_total" style="font-size:80px">\
-                      <i class="fa fa-spinner fa-spin"></i>\
+                      <i class="fas fa-spinner fa-spin"></i>\
                     </span>\
                   </div>\
                 </div>\
@@ -161,7 +163,7 @@ define(function(require) {
                 <div class="row">\
                   <div class="large-12 columns centered graph" id="vm_net_tx_graph" style="height: 100px;">\
                     <span  id="provision_dashboard_total" style="font-size:80px">\
-                      <i class="fa fa-spinner fa-spin"></i>\
+                      <i class="fas fa-spinner fa-spin"></i>\
                     </span>\
                   </div>\
                 </div>\
@@ -177,7 +179,7 @@ define(function(require) {
                 <div class="row">\
                   <div class="large-12 columns centered graph" id="vm_net_rx_speed_graph" style="height: 100px;">\
                     <span  id="provision_dashboard_total" style="font-size:80px">\
-                      <i class="fa fa-spinner fa-spin"></i>\
+                      <i class="fas fa-spinner fa-spin"></i>\
                     </span>\
                   </div>\
                 </div>\
@@ -193,7 +195,7 @@ define(function(require) {
                 <div class="row">\
                   <div class="large-12 columns centered graph" id="vm_net_tx_speed_graph" style="height: 100px;">\
                     <span  id="provision_dashboard_total" style="font-size:80px">\
-                      <i class="fa fa-spinner fa-spin"></i>\
+                      <i class="fas fa-spinner fa-spin"></i>\
                     </span>\
                   </div>\
                 </div>\
@@ -267,7 +269,7 @@ define(function(require) {
           } else {
             if ( (Config.isTabActionEnabled("vms-tab", "VM.detachnic")) &&
                  (StateActions.enabledStateAction("VM.detachnic", that.element.STATE, that.element.LCM_STATE))) {
-              actions += '<a href="VM.detachnic" class="detachnic" ><i class="fa fa-times"/>' + Locale.tr("Detach") + '</a>'
+              actions += '<a href="VM.detachnic" class="detachnic" ><i class="fas fa-times"/>' + Locale.tr("Detach") + '</a>'
             }
           }
         }
@@ -319,7 +321,7 @@ define(function(require) {
           "class":          'open-control',
           "orderable":      false,
           "data":           null,
-          "defaultContent": '<span class="fa fa-fw fa-chevron-down"></span>'
+          "defaultContent": '<span class="fas fa-fw fa-chevron-down"></span>'
         },
         {"data": "NIC_ID",     "defaultContent": ""},
         {"data": "NETWORK",    "defaultContent": ""},
@@ -474,8 +476,8 @@ define(function(require) {
 
           for (var i = 0; i < vmGraphs.length; i++) {
             Graphs.plot(response, vmGraphs[i]);
-          }
-        },
+            }
+          },
         error: Notifier.onError
       });
     }

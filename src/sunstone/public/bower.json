@@ -3,7 +3,7 @@
   "dependencies": {
     "flot": "0.8.3",
     "jgrowl": "1.4.2",
-    "fontawesome": "4.3.0",
+    "fontawesome": "5.0.7",
     "flot.tooltip": "0.8.4",
     "no-vnc": "0.5.1",
     "resumablejs": "git://github.com/23/resumable.js.git#420cd351c5",
@@ -16,7 +16,8 @@
     "jquery": "2.2.3",
     "datatables": "1.10.12",
     "navigo": "2.1.1",
-    "sprintf": "1.0.3"
+    "sprintf": "1.0.3",
+    "jquery-ui": "^1.12.1"
   },
   "authors": [
     "Daniel Molina <dmolina@opennebula.org>",

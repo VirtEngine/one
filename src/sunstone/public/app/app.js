@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -16,6 +16,8 @@
 
 define(function(require) {
   require('jquery');
+  require('jquery-ui');
+
   require('foundation');
 
   Foundation.Dropdown.defaults.positionClass = 'left';
@@ -35,7 +37,6 @@ define(function(require) {
   var Notifier = require('utils/notifier');
   var Menu = require('utils/menu');
   var Locale = require('utils/locale');
-
   var UserAndZoneTemplate = require('hbs!sunstone/user_and_zone');
 
   var _commonDialogs = [
@@ -95,12 +96,21 @@ define(function(require) {
   }
 
   function _insertUserAndZoneSelector() {
+
+    this.idGroup = -2; /*All*/
+    Config.changeFilter(false);
+
     $(".user-zone-info").html(UserAndZoneTemplate({
+      filterView: Config['filterView'],
       displayName: config['display_name'],
       settingsTabEnabled: Config.isTabEnabled(SETTINGS_TAB_ID),
+      mode : config["mode"],
       availableViews: config['available_views'],
       zoneName: config['zone_name']
     })).foundation();
+
+    $('#filter-view').hide();
+    groupsRefresh();
 
     $('.quickconf_view[view="' + config['user_config']["default_view"] + '"] i').addClass('fa-check');
     $(".user-zone-info a.quickconf_view_header").click(function() {
@@ -115,6 +125,86 @@ define(function(require) {
       Sunstone.runAction("User.append_sunstone_setting_refresh", -1, sunstone_setting);
     });
 
+    function groupsRefresh() {
+
+      OpenNebula.User.show({
+        timeout: true,
+        data : {
+          id: config['user_id']
+        },
+        success: function (request, obj_user) {
+          var groups = obj_user.USER.GROUPS.ID;
+          this.primaryGroup = obj_user.USER.GID;
+          var groupsHTML = "<li class='groups' value='-2'> <a href='#' value='-2' id='-2'> \
+              <i class='fas fa-fw'></i>" + Locale.tr("All") + "</a></li>";
+          if(this.idGroup == -2){
+            var groupsHTML = "<li class='groups' value='-2'> <a href='#' value='-2' id='-2'> \
+              <i class='fas fa-fw fa-check'></i>" + Locale.tr("All") + "</a></li>";
+          }
+
+          if (!$.isArray(groups)){
+            groups = groups.toString();
+            groups = [groups];
+          }
+
+          that = this;
+          OpenNebula.Group.list({
+            timeout: true,
+            success: function(request, group_list) {
+              var group_list_aux = group_list;
+              $.each(groups, function(key, value){
+                var id = value;
+                $.each(group_list_aux, function(key, value){
+                  if(id == value.GROUP.ID){
+                    if(id == that.idGroup){
+                      groupsHTML += "<li class='groups' value='" + id + "'id='" + id + "'> \
+                        <a href='#'><i class='fas fa-fw fa-check'></i>" + value.GROUP.NAME + "\
+                        </a></li>";
+                    } else {
+                      groupsHTML += "<li class='groups' value='" + id + "'id='" + id + "'> \
+                        <a href='#'><i class='fas fa-fw'></i>" + value.GROUP.NAME + "\
+                        </a></li>";
+                    }
+                    return false;
+                  }
+                });
+              });
+            },
+            error: Notifier.onError
+          });
+
+          $('#userselector').on('click', function(){
+            $('.groups-menu').empty();
+            $('.groups-menu').append(groupsHTML);
+            var primaryGroupChar = '<span class="fas fa-asterisk fa-fw" id="primary-char" \
+                                    style="float: right"></span>';
+            $('#'+ that.primaryGroup + ' a').append(primaryGroupChar);
+            $('.groups').on('click', function(){
+              that.idGroup = $(this).attr('value');
+              if(that.idGroup != -2){
+                $('#primary-char').remove();
+                Sunstone.runAction("User.chgrp", [parseInt(config['user_id'])], parseInt(that.idGroup));
+                $('a', this).append(primaryGroupChar);
+                Config.changeFilter(true);
+                var filterName = $(this).text();
+                $('#filter-view').show();
+                $('.filter-name').html(filterName);
+              } else {
+                $('#filter-view').hide();
+                Config.changeFilter(false);
+              }
+              $('.groups-menu a i').removeClass('fa-check');
+              $('a i', this).addClass('fa-check');
+              groupsRefresh();
+              $('.refresh').click();
+              $('.refresh-table').click();
+            });
+          });
+        },
+        error: Notifier.onError
+      });
+    }
+
     function zoneRefresh() {
       // Populate Zones dropdown
       OpenNebula.Zone.list({
@@ -125,9 +215,9 @@ define(function(require) {
             var icon;
 
             if(this.ZONE.NAME == config['zone_name']){
-              icon = '<i class="fa fa-fw fa-check"></i>'
+              icon = '<i class="fas fa-fw fa-check"></i>'
             } else {
-              icon = '<i class="fa fa-fw"></i>'
+              icon = '<i class="fas fa-fw"></i>'
             }
 
             $('.zone-ul').append('<li>' +
@@ -176,6 +266,14 @@ define(function(require) {
     });
   }
 
+  function _checkIP( sData )
+  {
+    if (/^\d{1,3}[\.]\d{1,3}[\.]\d{1,3}[\.]\d{1,3}$/.test(sData)) {
+      return 'ip-address';
+    }
+    return null;
+  }
+
   function _setupDataTableSearch() {
     $.fn.dataTable.ext.type.order['file-size-pre'] = function ( data ) {
       var matches = data.match( /^(\d+(?:\.\d+)?)\s*([a-z]+)/i );
@@ -188,6 +286,7 @@ define(function(require) {
         PB: 1125899906842624
       };
 
+
       if (matches) {
         var multiplier = multipliers[matches[2]];
         return parseFloat( matches[1] ) * multiplier;
@@ -195,5 +294,139 @@ define(function(require) {
         return -1;
       }
     }
+
+    jQuery.extend( jQuery.fn.dataTableExt.oSort, {
+      "date-euro-pre": function ( a ) {
+          var x;
+
+          if ( $.trim(a) !== '' ) {
+              var frDatea = $.trim(a).split(' ');
+              var frTimea = (undefined != frDatea[1]) ? frDatea[1].split(':') : [00,00,00];
+              var frDatea2 = frDatea[0].split('/');
+              x = (frDatea2[2] + frDatea2[1] + frDatea2[0] + frTimea[0] + frTimea[1] + ((undefined != frTimea[2]) ? frTimea[2] : 0)) * 1;
+          }
+          else {
+              x = Infinity;
+          }
+
+          return x;
+      },
+
+      "date-euro-asc": function ( a, b ) {
+          return a - b;
+      },
+
+      "date-euro-desc": function ( a, b ) {
+          return b - a;
+      }
+
+    });
+
+    //source https://cdn.datatables.net/plug-ins/1.10.12/type-detection/ip-address.js (modified)
+    jQuery.fn.dataTableExt.aTypes.unshift(
+      function ( sData )
+      {
+        if (/^\d{1,3}[\.]\d{1,3}[\.]\d{1,3}[\.]\d{1,3}$/.test(sData)) {
+          return 'ip-address';
+        }
+        return 'ip-address';
+      }
+    );
+
+    //source https://datatables.net/plug-ins/sorting/ip-address (modified)
+    jQuery.extend( jQuery.fn.dataTableExt.oSort, {
+    "ip-address-pre": function ( a ) {
+      if(a.split){
+      var ip = a.split("<br>");
+        var i, item;
+        if(ip.length == 1){
+          var m = a.split("."),
+              n = a.split(":");
+            }
+        else if(ip.length > 1){
+          var m = ip[0].split("."),
+              n = ip[0].split(":");
+        }
+        var x = "",
+            xa = "";
+
+        if (m.length == 4) {
+            // IPV4
+            for(i = 0; i < m.length; i++) {
+                item = m[i];
+
+                if(item.length == 1) {
+                    x += "00" + item;
+                }
+                else if(item.length == 2) {
+                    x += "0" + item;
+                }
+                else {
+                    x += item;
+                }
+            }
+        }
+        else if (n.length > 0) {
+            // IPV6
+            var count = 0;
+            for(i = 0; i < n.length; i++) {
+                item = n[i];
+
+                if (i > 0) {
+                    xa += ":";
+                }
+
+                if(item.length === 0) {
+                    count += 0;
+                }
+                else if(item.length == 1) {
+                    xa += "000" + item;
+                    count += 4;
+                }
+                else if(item.length == 2) {
+                    xa += "00" + item;
+                    count += 4;
+                }
+                else if(item.length == 3) {
+                    xa += "0" + item;
+                    count += 4;
+                }
+                else {
+                    xa += item;
+                    count += 4;
+                }
+            }
+
+            // Padding the ::
+            n = xa.split(":");
+            var paddDone = 0;
+
+            for (i = 0; i < n.length; i++) {
+                item = n[i];
+
+                if (item.length === 0 && paddDone === 0) {
+                    for (var padding = 0 ; padding < (32-count) ; padding++) {
+                        x += "0";
+                        paddDone = 1;
+                    }
+                }
+                else {
+                    x += item;
+                }
+            }
+        }
+
+        return x;
+      }else return a;
+    },
+
+    "ip-address-asc": function ( a, b ) {
+        return ((a < b) ? -1 : ((a > b) ? 1 : 0));
+    },
+
+    "ip-address-desc": function ( a, b ) {
+        return ((a < b) ? 1 : ((a > b) ? -1 : 0));
+    }
+});
   }
 });

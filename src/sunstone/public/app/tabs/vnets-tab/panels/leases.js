@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -80,22 +80,22 @@ define(function(require) {
         var col1HTML = "";
 
         if (lease.VM == "-1") { //hold
-          col0HTML = '<i class="alert-color fa fa-square"/>';
+          col0HTML = '<i class="alert-color fas fa-square"/>';
 
           if (Config.isTabActionEnabled("vnets-tab", "Network.release_lease")) {
-            col1HTML = '<a class="release_lease button small" href="#"><i class="fa fa-play"/></a>';
+            col1HTML = '<a class="release_lease button small" href="#"><i class="fas fa-play"/></a>';
           }
         } else if (lease.VM != undefined) { //used by a VM
-          col0HTML = '<i class="primary-color fa fa-square"/>';
+          col0HTML = '<i class="primary-color fas fa-square"/>';
           col1HTML = Navigation.link(Locale.tr("VM:") + lease.VM, "vms-tab", lease.VM);
         } else if (lease.VNET != undefined) { //used by a VNET
-          col0HTML = '<i class="warning-color fa fa-square"/>';
+          col0HTML = '<i class="warning-color fas fa-square"/>';
           col1HTML = Navigation.link(Locale.tr("NET:") + lease.VNET, "vnets-tab", lease.VNET);
         } else if (lease.VROUTER != undefined) { //used by a VR
-          col0HTML = '<i class="success-color fa fa-square"/>';
+          col0HTML = '<i class="success-color fas fa-square"/>';
           col1HTML = Navigation.link(Locale.tr("VR:") + lease.VROUTER, "vrouters-tab", lease.VROUTER);
         } else {
-          col0HTML = '<i class="primary-color fa fa-square"/>';
+          col0HTML = '<i class="primary-color fas fa-square"/>';
           col1HTML = '--';
         }
 
@@ -103,6 +103,7 @@ define(function(require) {
           "col0HTML"  : col0HTML,
           "col1HTML"  : col1HTML,
           "IP"        : lease.IP,
+          "IP6"       : lease.IP6,
           "MAC"       : lease.MAC,
           "IP6_LINK"  : lease.IP6_LINK,
           "IP6_ULA"   : lease.IP6_ULA,
@@ -156,7 +157,7 @@ define(function(require) {
         var obj = { ip: lease};
         Sunstone.runAction('Network.release',that.element.ID,obj);
         //Set spinner
-        $(this).parents('tr').html('<td class="key_td"><i class="fa fa-spinner fa-spin"></i></td><td class="value_td"></td>');
+        $(this).parents('tr').html('<td class="key_td"><i class="fas fa-spinner fa-spin"></i></td><td class="value_td"></td>');
         return false;
       });
     }

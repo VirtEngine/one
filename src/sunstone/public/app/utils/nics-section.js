@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -145,6 +145,15 @@ define(function(require) {
         }
       }
 
+      var ip6 = $("input.manual_ip6", $(this)).val();
+
+      if (ip6 != undefined){
+        delete nic["IP6"];
+
+        if (ip6 != ""){
+          nic["IP6"] = ip6;
+        }
+      }
       delete nic["VROUTER_MANAGEMENT"];
 
       if ($("input.management", $(this)).prop("checked")){
@@ -304,7 +313,7 @@ define(function(require) {
   function update_provision_networks_datatable(datatable) {
     datatable.html('<div class="text-center">' +
       '<span class="fa-stack fa-5x">' +
-        '<i class="fa fa-cloud fa-stack-2x"></i>' +
+        '<i class="fas fa-cloud fa-stack-2x"></i>' +
         '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>' +
       '</span>' +
       '<br>' +
@@ -320,8 +329,8 @@ define(function(require) {
         if (item_list.length == 0) {
           datatable.html('<div class="text-center">' +
             '<span class="fa-stack fa-5x">' +
-              '<i class="fa fa-cloud fa-stack-2x"></i>' +
-              '<i class="fa fa-info-circle fa-stack-1x fa-inverse"></i>' +
+              '<i class="fas fa-cloud fa-stack-2x"></i>' +
+              '<i class="fas fa-info-circle fa-stack-1x fa-inverse"></i>' +
             '</span>' +
             '<br>' +
             '<br>' +

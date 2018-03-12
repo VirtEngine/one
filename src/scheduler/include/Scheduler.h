@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -19,6 +19,7 @@
 
 #include "Log.h"
 #include "HostPoolXML.h"
+#include "VMGroupPoolXML.h"
 #include "UserPoolXML.h"
 #include "ClusterPoolXML.h"
 #include "DatastorePoolXML.h"
@@ -49,14 +50,16 @@ public:
 protected:
 
     Scheduler():
+        acls(0),
+        upool(0),
         hpool(0),
         clpool(0),
-        vmpool(0),
-        vmapool(0),
         dspool(0),
         img_dspool(0),
-        upool(0),
-        acls(0),
+        vmpool(0),
+        vm_roles_pool(0),
+        vmgpool(0),
+        vmapool(0),
         timer(0),
         one_xmlrpc(""),
         machines_limit(0),
@@ -72,12 +75,14 @@ protected:
         delete clpool;
 
         delete vmpool;
+        delete vm_roles_pool;
         delete vmapool;
 
         delete dspool;
         delete img_dspool;
 
         delete upool;
+        delete vmgpool;
 
         delete acls;
     };
@@ -85,17 +90,21 @@ protected:
     // ---------------------------------------------------------------
     // Pools
     // ---------------------------------------------------------------
+    AclXML *      acls;
+    UserPoolXML * upool;
 
     HostPoolXML *    hpool;
     ClusterPoolXML * clpool;
 
-    VirtualMachinePoolXML *       vmpool;
-    VirtualMachineActionsPoolXML* vmapool;
     SystemDatastorePoolXML * dspool;
-    ImageDatastorePoolXML * img_dspool;
-    UserPoolXML * upool;
+    ImageDatastorePoolXML *  img_dspool;
 
-    AclXML * acls;
+    VirtualMachinePoolXML *     vmpool;
+    VirtualMachineRolePoolXML * vm_roles_pool;
+
+    VMGroupPoolXML * vmgpool;
+
+    VirtualMachineActionsPoolXML* vmapool;
 
     // ---------------------------------------------------------------
     // Scheduler Policies
@@ -109,6 +118,11 @@ protected:
     void add_ds_policy(SchedulerPolicy *policy)
     {
         ds_policies.push_back(policy);
+    }
+
+    void add_vm_policy(SchedulerPolicy *policy)
+    {
+        vm_policies.push_back(policy);
     }
 
     // ---------------------------------------------------------------
@@ -135,6 +149,8 @@ protected:
 
     virtual int do_scheduled_actions();
 
+    virtual void do_vm_groups();
+
 private:
     Scheduler(Scheduler const&){};
 
@@ -148,6 +164,7 @@ private:
 
     vector<SchedulerPolicy *> host_policies;
     vector<SchedulerPolicy *> ds_policies;
+    vector<SchedulerPolicy *> vm_policies;
 
     // ---------------------------------------------------------------
     // Configuration attributes
@@ -189,7 +206,15 @@ private:
     pthread_t       sched_thread;
     ActionManager   am;
 
-    void do_action(const string &name, void *args);
+    // -------------------------------------------------------------------------
+    // Action Listener interface
+    // -------------------------------------------------------------------------
+    void timer_action(const ActionRequest& ar);
+
+    void finalize_action(const ActionRequest& ar)
+    {
+        NebulaLog::log("SCHED",Log::INFO,"Stopping the scheduler...");
+    };
 };
 
 #endif /*SCHEDULER_H_*/

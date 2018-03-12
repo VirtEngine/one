@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -15,7 +15,6 @@
 /* -------------------------------------------------------------------------- */
 
 #include "ImageManager.h"
-#include "NebulaLog.h"
 #include "ImagePool.h"
 #include "Nebula.h"
 
@@ -37,7 +36,7 @@ extern "C" void * image_action_loop(void *arg)
 
     im = static_cast<ImageManager *>(arg);
 
-    im->am.loop(im->timer_period, 0);
+    im->am.loop(im->timer_period);
 
     NebulaLog::log("ImM",Log::INFO,"Image Manager stopped.");
 
@@ -114,31 +113,7 @@ int ImageManager::start()
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void ImageManager::do_action(const string &action, void * arg)
-{
-    if (action == ACTION_TIMER)
-    {
-        timer_action();
-    }
-    else if (action == ACTION_FINALIZE)
-    {
-        NebulaLog::log("ImM",Log::INFO,"Stopping Image Manager...");
-        MadManager::stop();
-    }
-    else
-    {
-        ostringstream oss;
-        oss << "Unknown action name: " << action;
-
-        NebulaLog::log("ImM", Log::ERROR, oss);
-    }
-}
-
-
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-
-void ImageManager::timer_action()
+void ImageManager::timer_action(const ActionRequest& ar)
 {
     static int mark = 0;
     static int tics = monitor_period;
@@ -166,6 +141,12 @@ void ImageManager::timer_action()
 
     Nebula& nd             = Nebula::instance();
     DatastorePool * dspool = nd.get_dspool();
+    RaftManager * raftm    = nd.get_raftm();
+
+    if ( !raftm->is_leader() && !raftm->is_solo() )
+    {
+        return;
+    }
 
     rc = dspool->list(datastores);
 

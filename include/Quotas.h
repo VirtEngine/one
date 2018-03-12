@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -181,13 +181,32 @@ public:
         quota_del(DATASTORE, uid, gid, tmpl);
     }
 
+    /**
+     *  Delete Datastore related usage from quota counters.
+     *  for the given user and group
+     *    @param uid of the user
+     *    @param gid of the group
+     *    @param tmpl template for the image, with usage
+     */
+    static void ds_del(int uid, int gid, vector<Template *> tmpls)
+    {
+        vector<Template *>::iterator it;
+
+        for ( it = tmpls.begin(); it != tmpls.end() ; ++it )
+        {
+            quota_del(DATASTORE, uid, gid, *it);
+
+            delete *it;
+        }
+    }
+
      /**
       *  Delete a set of Datastore usage attributes from quota counters. Each
       *  quota datastore is associate to a given image. NOTE: The templates
       *  *ARE FREED* by this function
       *    @param ds_quotas a map with image_id and a tmpl with usage attributes
       */
-    static void ds_del(map<int, Template *>& ds_quotas);
+    static void ds_del_recreate(int uid, int gid, vector<Template *>& ds_quotas);
 
     /**
      *  Delete usage from the given quota counters.

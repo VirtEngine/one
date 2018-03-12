@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -17,6 +17,7 @@
 #include "QuotaVirtualMachine.h"
 #include "Quotas.h"
 #include "VirtualMachine.h"
+#include "VirtualMachineDisk.h"
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -61,7 +62,7 @@ bool QuotaVirtualMachine::check(Template * tmpl,
         return false;
     }
 
-    size = VirtualMachine::get_system_disk_size(tmpl);
+    size = VirtualMachineDisks::system_ds_size(tmpl);
 
     vm_request.insert(make_pair("VMS",1));
     vm_request.insert(make_pair("MEMORY", memory));
@@ -97,7 +98,7 @@ void QuotaVirtualMachine::del(Template * tmpl)
         vms = 1;
     }
 
-    size = VirtualMachine::get_system_disk_size(tmpl);
+    size = VirtualMachineDisks::system_ds_size(tmpl);
 
     vm_request.insert(make_pair("VMS", vms));
     vm_request.insert(make_pair("MEMORY", memory));
@@ -141,7 +142,7 @@ bool QuotaVirtualMachine::update(Template * tmpl,
         vm_request.insert(make_pair("CPU", delta_cpu));
     }
 
-    delta_size = VirtualMachine::get_system_disk_size(tmpl);
+    delta_size = VirtualMachineDisks::system_ds_size(tmpl);
 
     if ( delta_size != 0 )
     {

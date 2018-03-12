@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -177,6 +177,12 @@ class DummyDriver < VirtualMachineDriver
         sg_id    = xml_data.elements['SECURITY_GROUP_ID'].text
 
         send_message(ACTION[:update_sg],result,id,sg_id)
+    end
+
+    def resize_disk(id, drv_message)
+        result = retrieve_result("resize_disk")
+
+        send_message(ACTION[:resize_disk], result, id)
     end
 
     def poll(id, drv_message)

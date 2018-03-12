@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -48,7 +48,7 @@ public:
     /**
      *  Error message for negative results
      */
-    string message;
+    std::string message;
 
     /**
      *  Time out, true if the request ended because of a time out
@@ -65,7 +65,7 @@ public:
      */
     void notify()
     {
-        am.trigger(ActionListener::ACTION_FINALIZE,0);
+        am.finalize();
     };
 
     /**
@@ -75,7 +75,15 @@ public:
     {
         time_out = time(0) + 90;//Requests will expire in 1.5 minutes
 
-        am.loop(0,0);
+        am.loop();
+    };
+
+    /**
+     *  Wait for the AuthRequest to be completed
+     */
+    void wait(time_t t)
+    {
+        am.loop(t);
     };
 
 protected:
@@ -93,9 +101,16 @@ protected:
     ActionManager am;
 
     /**
-     *  No actions defined for the request, just FINALIZE when done
+     *  Timer action to finalize time-out waits
      */
-    void do_action(const string &name, void *args){};
+    void timer_action(const ActionRequest& ar)
+    {
+        result  = false;
+        timeout = true;
+        message = "Operation time out";
+
+        am.finalize();
+    };
 };
 
 #endif /*SYNC_REQUEST_H_*/

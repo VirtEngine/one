@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -19,7 +19,6 @@ define(function(require) {
   var TopRowHTML = require('hbs!./menu/top-row');
   var ProvisionTopRowHTML = require('hbs!./menu/provision-top-row');
   var Config = require('sunstone-config');
-
   return {
     'insert': _insert,
     'insertProvision': _insertProvision,
@@ -30,7 +29,11 @@ define(function(require) {
   };
 
   function _insert(){
-    $('#top-row').html(TopRowHTML({logo: Config.logo}));
+    $('#top-row').html(TopRowHTML({
+      logo: Config.logo,
+      link: Config.link_logo,
+      link_text: Config.text_link_logo
+    }));
 
     _setup();
   }
@@ -44,7 +47,6 @@ define(function(require) {
   function _setup(){
     $('#menu-toggle').on('click', function(){
       var hiding = $('.sunstone-content').hasClass("large-10");
-
       if(!hiding){
         $('.sunstone-content').toggleClass('large-10');
         $('.sunstone-content').toggleClass('large-12');

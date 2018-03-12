@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -171,12 +171,16 @@ int RequestManagerDelete::drop(PoolObjectSQL * object, bool recursive,
 int TemplateDelete::drop(PoolObjectSQL * object, bool recursive,
 		RequestAttributes& att)
 {
-    vector<VectorAttribute *> disks;
+    vector<VectorAttribute *> vdisks;
     vector<VectorAttribute *>::iterator i;
+
+    VirtualMachineDisks disks(true);
 
     if (recursive)
     {
-		static_cast<VMTemplate *>(object)->clone_disks(disks);
+		static_cast<VMTemplate *>(object)->clone_disks(vdisks);
+
+        disks.init(vdisks, false);
     }
 
 	int rc = RequestManagerDelete::drop(object, false, att);
@@ -193,11 +197,9 @@ int TemplateDelete::drop(PoolObjectSQL * object, bool recursive,
     set<int> error_ids;
     set<int> img_ids;
 
-    ImagePool* ipool = Nebula::instance().get_ipool();
-
 	ImageDelete img_delete;
 
-    ipool->get_image_ids(disks, img_ids, att.uid);
+    disks.get_image_ids(img_ids, att.uid);
 
     for (set<int>::iterator it = img_ids.begin(); it != img_ids.end(); it++)
     {
@@ -208,11 +210,6 @@ int TemplateDelete::drop(PoolObjectSQL * object, bool recursive,
 
             error_ids.insert(*it);
         }
-    }
-
-    for (i = disks.begin(); i != disks.end() ; i++)
-    {
-        delete *i;
     }
 
     if ( !error_ids.empty() )
@@ -285,6 +282,33 @@ int GroupDelete::drop(PoolObjectSQL * object, bool recursive,
     if ( rc == 0 )
     {
         aclm->del_gid_rules(oid);
+    }
+
+    Nebula&        nd = Nebula::instance();
+    VdcPool * vdcpool = nd.get_vdcpool();
+
+    std::vector<int> vdcs;
+    std::vector<int>::iterator it;
+
+    std::string error;
+
+    vdcpool->list(vdcs);
+
+    for (it = vdcs.begin() ; it != vdcs.end() ; ++it)
+    {
+        Vdc * vdc = vdcpool->get(*it, true);
+
+        if ( vdc == 0 )
+        {
+            continue;
+        }
+
+        if ( vdc->del_group(oid, error) == 0 )
+        {
+            vdcpool->update(vdc);
+        }
+
+        vdc->unlock();
     }
 
     return rc;
@@ -370,6 +394,8 @@ int ZoneDelete::drop(PoolObjectSQL * object, bool recursive,
     {
         aclm->del_zid_rules(oid);
     }
+
+    Nebula::instance().get_frm()->delete_zone(oid);
 
     return rc;
 }
@@ -459,6 +485,26 @@ int SecurityGroupDelete::drop(PoolObjectSQL * object, bool recursive,
     }
 
     return RequestManagerDelete::drop(object, false, att);
+}
+
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+int VirtualRouterDelete::drop(PoolObjectSQL * object, bool recursive,
+		RequestAttributes& att)
+{
+    VirtualRouter * vr = static_cast<VirtualRouter *>(object);
+
+    set<int> vms = vr->get_vms();
+
+    int rc  = RequestManagerDelete::drop(object, false, att);
+
+    if ( rc == 0 && !vms.empty())
+    {
+        VirtualRouter::shutdown_vms(vms, att);
+    }
+
+    return rc;
 }
 
 /* ------------------------------------------------------------------------- */

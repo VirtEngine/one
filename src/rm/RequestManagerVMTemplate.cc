@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -15,6 +15,7 @@
 /* -------------------------------------------------------------------------- */
 
 #include "RequestManagerVMTemplate.h"
+#include "VirtualMachineDisk.h"
 #include "PoolObjectAuth.h"
 #include "Nebula.h"
 #include "RequestManagerClone.h"
@@ -215,7 +216,7 @@ Request::ErrorCode VMTemplateInstantiate::request_execute(int id, string name,
 
         extended_tmpl = new VirtualMachineTemplate(*tmpl);
 
-        VirtualMachine::disk_extended_info(att.uid, extended_tmpl);
+        VirtualMachineDisks::extended_info(att.uid, extended_tmpl);
 
         if (quota_authorization(extended_tmpl, Quotas::VIRTUALMACHINE, att,
                     att.resp_msg) == false)
@@ -254,10 +255,7 @@ Request::ErrorCode VMTemplateInstantiate::merge(
                 const string    &str_uattrs,
                 RequestAttributes& att)
 {
-    if (str_uattrs.empty())
-    {
-		return SUCCESS;
-	}
+
 
 	int rc;
 
@@ -269,11 +267,15 @@ Request::ErrorCode VMTemplateInstantiate::merge(
 	if ( rc != 0 )
 	{
 		return INTERNAL;
+    }
+    else if (uattrs.empty())
+    {
+        return SUCCESS;
 	}
 
 	if (att.uid!=UserPool::ONEADMIN_ID && att.gid!=GroupPool::ONEADMIN_ID)
 	{
-		if (uattrs.check(aname))
+        if (uattrs.check_restricted(aname, tmpl))
 		{
 			att.resp_msg ="User Template includes a restricted attribute " + aname;
 

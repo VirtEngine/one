@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -20,6 +20,7 @@
 #include "MadManager.h"
 #include "ActionManager.h"
 #include "ImageManagerDriver.h"
+#include "NebulaLog.h"
 
 using namespace std;
 
@@ -79,7 +80,7 @@ public:
      */
     void finalize()
     {
-        am.trigger(ACTION_FINALIZE,0);
+        am.finalize();
     };
 
     /**************************************************************************/
@@ -93,18 +94,20 @@ public:
      *  Try to acquire an image from the repository for a VM.
      *    @param image_id id of image
      *    @param error string describing the error
+     *    @param attach true if attaching the image to a VM
      *    @return pointer to the image or 0 if could not be acquired
      */
-    Image * acquire_image(int vm_id, int image_id, string& error);
+    Image * acquire_image(int vm_id, int image_id, bool attach, string& error);
 
     /**
      *  Try to acquire an image from the repository for a VM.
      *    @param name of the image
      *    @param id of owner
      *    @param error string describing the error
+     *    @param attach true if attaching the image to a VM
      *    @return pointer to the image or 0 if could not be acquired
      */
-    Image * acquire_image(int vm_id, const string& name, int uid, string& error);
+    Image * acquire_image(int vm_id, const string& name, int uid, bool attach, string& error);
 
     /**
      *  Releases an image and triggers any needed operations in the repo
@@ -258,6 +261,14 @@ public:
      */
      void set_image_snapshots(int iid, const Snapshots& s);
 
+    /**
+     *  Set the size for the given image. The image MUST be persistent
+     *  and of type OS or DATABLOCK.
+     *    @param iid id of image
+     *    @param size
+     */
+     void set_image_size(int iid, long long size);
+
      /**
       *  Deletes the snapshot of an image
       *    @param iid id of image
@@ -349,9 +360,10 @@ private:
     /**
      *  Acquires an image updating its state.
      *    @param image pointer to image, it should be locked
+     *    @param attach true if attaching the image to a VM
      *    @return 0 on success
      */
-    int acquire_image(int vm_id, Image *img, string& error);
+    int acquire_image(int vm_id, Image *img, bool attach, string& error);
 
     /**
      *  Moves a file to an image in the repository
@@ -372,10 +384,19 @@ private:
             const string& ds_data,
             const string& extra_data);
 
+    // -------------------------------------------------------------------------
+    // Action Listener interface
+    // -------------------------------------------------------------------------
     /**
      *  This function is executed periodically to monitor Datastores.
      */
-    void timer_action();
+    void timer_action(const ActionRequest& ar);
+
+    void finalize_action(const ActionRequest& ar)
+    {
+        NebulaLog::log("ImM",Log::INFO,"Stopping Image Manager...");
+        MadManager::stop();
+    };
 };
 
 #endif /*IMAGE_MANAGER_H*/

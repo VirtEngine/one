@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -105,7 +105,7 @@ define(function(require) {
     context.on("click", "i.remove-tab", function(){
       var tr = $(this).closest('tr');
 
-      $(this).closest('td').html('<i class="fa fa-spinner fa-spin"/>')
+      $(this).closest('td').html('<i class="fas fa-spinner fa-spin"/>')
 
       var token = $(".token-text", tr).text();
 
@@ -136,7 +136,7 @@ define(function(require) {
     });
 
     $("#token_btn", context).click(function(){
-      $("#token_btn", context).html('<i class="fa fa-spinner fa-spin"/>')
+      $("#token_btn", context).html('<i class="fas fa-spinner fa-spin"/>')
 
       var expire = $(".token-expiration", context).val();
       var egid   = $(".token-group-selector .resource_list_select").val();

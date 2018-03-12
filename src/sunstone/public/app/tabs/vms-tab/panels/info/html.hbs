@@ -1,5 +1,5 @@
 {{! -------------------------------------------------------------------------- }}
-{{! Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                }}
+{{! Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                }}
 {{!                                                                            }}
 {{! Licensed under the Apache License, Version 2.0 (the "License"); you may    }}
 {{! not use this file except in compliance with the License. You may obtain    }}
@@ -24,6 +24,9 @@
       </thead>
       <tbody>
         <tr>
+          <td class="key_td" colspan="2"><img src="{{element.USER_TEMPLATE.LOGO}}"></td>
+        </tr>
+        <tr>
           <td class="key_td">{{tr "ID"}}</td>
           <td class="value_td" colspan="2">{{element.ID}}</td>
         </tr>
@@ -43,6 +46,13 @@
           <td class="value_td">{{{hostnameHTML}}}</td>
           <td></td>
         </tr>
+
+        <tr>
+          <td class="key_td">{{tr "IP"}}</td>
+          <td class="value_td">{{{IP}}}</td>
+          <td></td>
+        </tr>
+
         <tr>
           <td class="key_td">{{tr "Start time"}}</td>
           <td class="value_td">{{prettyStartTime}}</td>
@@ -71,22 +81,29 @@
 </div>
 <div class="large-6 columns">{{{permissionsTableHTML}}}</div>
 </div>
-<div class="row">
-<div class="large-9 columns">{{{templateTableHTML}}}</div>
-</div>
-{{#if monitoringTableContentHTML}}
-<div class="row">
-<div class="large-9 columns">
-  <table class="dataTable">
-    <thead>
-      <tr>
-        <th colspan="2">{{tr "Monitoring"}}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{{monitoringTableContentHTML}}}
-    </tbody>
-  </table>
-</div>
-</div>
-{{/if}}
+{{#isFeatureEnabled "show_attributes_info"}}
+  <div class="row vcenter">
+  <div class="large-9 columns">{{{templateTableVcenterHTML}}}</div>
+  </div>
+  <div class="row">
+  <div class="large-9 columns">{{{templateTableHTML}}}</div>
+  </div>
+{{/isFeatureEnabled}}
+{{#isFeatureEnabled "show_monitoring_info"}}
+  {{#if monitoringTableContentHTML}}
+    <div class="row">
+    <div class="large-9 columns">
+      <table class="dataTable">
+        <thead>
+          <tr>
+            <th colspan="2">{{tr "Monitoring"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{{monitoringTableContentHTML}}}
+        </tbody>
+      </table>
+    </div>
+    </div>
+  {{/if}}
+{{/isFeatureEnabled}}

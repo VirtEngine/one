@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -34,6 +34,7 @@ define(function(require) {
   var TAB_ID = require('../tabId');
   var PANEL_ID = require('./snapshots/panelId');
   var SNAPSHOT_DIALOG_ID = require('../dialogs/snapshot/dialogId');
+  var REVERT_DIALOG_ID = require('../dialogs/revert/dialogId');
   var RESOURCE = "VM"
   var XML_ROOT = "VM"
 
@@ -120,11 +121,15 @@ define(function(require) {
                that.element.LCM_STATE == OpenNebulaVM.LCM_STATES.RUNNING)) {
 
             if (Config.isTabActionEnabled("vms-tab", "VM.snapshot_revert")) {
-              actions += '<a href="VM.snapshot_revert" class="snapshot_revert" ><i class="fa fa-reply"/>' + Locale.tr("Revert") + '</a> &emsp;'
+              actions += '<a href="VM.snapshot_revert" class="snapshot_revert" ><i class="fas fa-reply"/>' + Locale.tr("Revert") + '</a> &emsp;'
             }
 
             if (Config.isTabActionEnabled("vms-tab", "VM.snapshot_delete")) {
-              actions += '<a href="VM.snapshot_delete" class="snapshot_delete" ><i class="fa fa-times"/>' + Locale.tr("Delete") + '</a>'
+              actions += '<a href="VM.snapshot_delete" class="snapshot_delete" ><i class="fas fa-times"/>' + Locale.tr("Delete") + '</a>'
+            }
+          } else if (that.element.STATE == OpenNebulaVM.STATES.POWEROFF &&  that.element.HISTORY_RECORDS.HISTORY.VM_MAD == "vcenter"){
+            if (Config.isTabActionEnabled("vms-tab", "VM.snapshot_delete")) {
+              actions += '<a href="VM.snapshot_delete" class="snapshot_delete" ><i class="fas fa-times"/>' + Locale.tr("Delete") + '</a>'
             }
           }
         }
@@ -165,8 +170,10 @@ define(function(require) {
     if (Config.isTabActionEnabled("vms-tab", "VM.snapshot_revert")) {
       context.off('click', '.snapshot_revert');
       context.on('click', '.snapshot_revert', function() {
-        var snapshot_id = $(this).parents('tr').attr('snapshot_id');
-        Sunstone.runAction('VM.snapshot_revert', that.element.ID,  {"snapshot_id": snapshot_id});
+        var dialog = Sunstone.getDialog(REVERT_DIALOG_ID);
+        that.element.snapshot_id = $(this).parents('tr').attr('snapshot_id');
+        dialog.setElement(that.element);
+        dialog.show();
         return false;
       });
     }

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -19,8 +19,12 @@ require.config({
     /* Almond */
     'almond': '../bower_components/almond/almond',
 
+    /* Addons */
+    'addons': './addons',
+
     /* jQuery */
     'jquery': '../bower_components/jquery/dist/jquery',
+    'jquery-ui': '../bower_components/jquery-ui/jquery-ui',
 
     /* DataTables */
     'datatables.net': '../bower_components/datatables/media/js/jquery.dataTables',
@@ -58,6 +62,8 @@ require.config({
     /* Flot Graphs */
     'flot': '../bower_components/flot/jquery.flot',
     'flot.stack': '../bower_components/flot/jquery.flot.stack',
+    'flot.navigate': '../bower_components/flot/jquery.flot.navigate',
+    'flot.canvas': '../bower_components/flot/jquery.flot.canvas',
     'flot.resize': '../bower_components/flot/jquery.flot.resize',
     'flot.time': '../bower_components/flot/jquery.flot.time',
     'flot.tooltip': '../bower_components/flot.tooltip/js/jquery.flot.tooltip',
@@ -152,7 +158,8 @@ require.config({
         'tabs/secgroups-tab',
         'tabs/settings-tab',
         'tabs/support-tab',
-        'tabs/upgrade-top-tab'
+        'tabs/upgrade-top-tab',
+        'tabs/vmgroup-tab'
       ]
     },
 
@@ -353,7 +360,9 @@ require.config({
       deps: [
         'spice-spiceconn'
       ]
-    }
+    },
+
+    'addons': {}
   }
 });
 

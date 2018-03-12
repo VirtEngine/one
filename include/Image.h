@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems              */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems              */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -24,6 +24,8 @@
 #include "Snapshots.h"
 
 using namespace std;
+
+class VirtualMachineDisk;
 
 /**
  *  The Image class.
@@ -188,6 +190,31 @@ public:
     {
         return (persistent_img == 1);
     };
+
+    bool is_managed() const
+    {
+        bool one_managed;
+
+        if (get_template_attribute("OPENNEBULA_MANAGED", one_managed) == false)
+        {
+            one_managed = true;
+        }
+
+        return one_managed;
+    }
+
+    /**
+     *  Check the PERSISTENT attribute in an image Template, if not set the
+     *  DEFAULT_IMAGE_PERSISTENT and DEFAULT_IMAGE_PERSISTENT_NEW are check in
+     *  user/group/oned.conf to set the attribute in the image.
+     *    @param image_template
+     *    @param uid of the user making the request
+     *    @param gid of the group of the user making the request
+     *    @param is_allocate true for one.image.allocate API Calls
+     *    @return true if the image is set to persistent, false otherwise
+     */
+    static bool test_set_persistent(Template * image_template, int uid, int gid,
+            bool is_allocate);
 
     /**
      *  Returns the source path of the image
@@ -454,11 +481,10 @@ public:
      *   into the disk
      *
      */
-    void disk_attribute(VectorAttribute *       disk,
-                        ImageType&              img_type,
-                        string&                 dev_prefix,
-                        const vector<string>&   inherit_attrs);
-
+    void disk_attribute(VirtualMachineDisk *  disk,
+                        ImageType&            img_type,
+                        string&               dev_prefix,
+                        const vector<string>& inherit_attrs);
     /**
      *  Factory method for image templates
      */
@@ -682,7 +708,7 @@ private:
     {
         ostringstream oss_image(Image::db_bootstrap);
 
-        return db->exec(oss_image);
+        return db->exec_local_wr(oss_image);
     };
 
     /**

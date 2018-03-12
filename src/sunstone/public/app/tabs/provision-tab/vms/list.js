@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -88,8 +88,8 @@ define(function(require) {
     if (item_list.length == 0) {
       datatable.html('<div class="text-center">' +
         '<span class="fa-stack fa-5x">' +
-          '<i class="fa fa-cloud fa-stack-2x"></i>' +
-          '<i class="fa fa-info-circle fa-stack-1x fa-inverse"></i>' +
+          '<i class="fas fa-cloud fa-stack-2x"></i>' +
+          '<i class="fas fa-info-circle fa-stack-1x fa-inverse"></i>' +
         '</span>' +
         '<br>' +
         '<br>' +
@@ -107,7 +107,7 @@ define(function(require) {
   function update_provision_vms_datatable(datatable, timeout) {
     datatable.html('<div class="text-center">' +
       '<span class="fa-stack fa-5x">' +
-        '<i class="fa fa-cloud fa-stack-2x"></i>' +
+        '<i class="fas fa-cloud fa-stack-2x"></i>' +
         '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>' +
       '</span>' +
       '<br>' +
@@ -140,7 +140,8 @@ define(function(require) {
       "aLengthMenu": [[6, 12, 36, 72], [6, 12, 36, 72]],
       "aaSorting"  : [[0, "desc"]],
       "aoColumnDefs": [
-          { "bVisible": false, "aTargets": ["all"]}
+          { "bVisible": false, "aTargets": ["all"]},
+          { "sType": "num", "aTargets": [0]}
       ],
       "aoColumns": [
           { "mDataProp": "VM.ID" },
@@ -152,8 +153,8 @@ define(function(require) {
         if (this.$('tr', {"filter": "applied"} ).length == 0) {
           this.html('<div class="text-center">'+
             '<span class="fa-stack fa-5x">'+
-              '<i class="fa fa-cloud fa-stack-2x"></i>'+
-              '<i class="fa fa-info-circle fa-stack-1x fa-inverse"></i>'+
+              '<i class="fas fa-cloud fa-stack-2x"></i>'+
+              '<i class="fas fa-info-circle fa-stack-1x fa-inverse"></i>'+
             '</span>'+
             '<br>'+
             '<br>'+
@@ -176,17 +177,22 @@ define(function(require) {
 
         var state = get_provision_vm_state(data);
 
+        var monitoring = "";
+        if(data.MONITORING.GUEST_IP){
+          monitoring = '<li class="provision-bullet-item"><span class=""><i class="fas fa-fw fa-lg fa-server"/>' + data.MONITORING.GUEST_IP + '</span></li>';
+        }
+
         $(".provision_vms_ul", context).append('<div class="column">'+
             '<ul class="provision-pricing-table menu vertical" opennebula_id="'+data.ID+'" datatable_index="'+iDisplayIndexFull+'">'+
               '<li class="provision-title">'+
                 '<a class="provision_info_vm_button">'+
                 '<span class="'+ state.color +'-color right" title="'+state.str+'">'+
-                  '<i class="fa fa-square"/>'+
+                  '<i class="fas fa-square"/>'+
                 '</span>'+
                 data.NAME + '</a>'+
               '</li>'+
               '<li class="provision-bullet-item" >'+
-                '<i class="fa fa-fw fa-lg fa-laptop"/> '+
+                '<i class="fas fa-fw fa-lg fa-laptop"/> '+
                 'x'+data.TEMPLATE.CPU+' - '+
                 ((data.TEMPLATE.MEMORY > 1000) ?
                   (Math.floor(data.TEMPLATE.MEMORY/1024)+'GB') :
@@ -198,10 +204,10 @@ define(function(require) {
                 '<span class="">'+
                   get_provision_ips(data) +
                 '</span>'+
-              '</li>'+
+              '</li>'+ monitoring +
               '<li class="provision-bullet-item-last" >'+
                 '<span class="">'+
-                  '<i class="fa fa-fw fa-lg fa-user"/> '+
+                  '<i class="fas fa-fw fa-lg fa-user"/> '+
                   data.UNAME+
                 '</span>'+
                 '<span class="right">'+
@@ -368,14 +374,14 @@ define(function(require) {
               '<li class="provision-title">'+
                 '<span class="without-link '+ state.color +'-color">'+
                   '<span class="'+ state.color +'-color right" title="'+state.str+'">'+
-                    '<i class="fa fa-square"/>'+
+                    '<i class="fas fa-square"/>'+
                   '</span>'+
                   state.str+
                 '</span>'+
               '</li>'+
               '<li class="provision-bullet-item" >'+
                 '<span>'+
-                  '<i class="fa fa-fw fa-lg fa-laptop"/> '+
+                  '<i class="fas fa-fw fa-lg fa-laptop"/> '+
                   'x'+TemplateUtils.htmlEncode(data.TEMPLATE.CPU)+' - '+
                   ((data.TEMPLATE.MEMORY > 1000) ?
                     (Math.floor(data.TEMPLATE.MEMORY/1024)+'GB') :
@@ -393,11 +399,11 @@ define(function(require) {
               '</li>'+
               '<li class="provision-bullet-item-last text-right">'+
                 '<span class="left">'+
-                  '<i class="fa fa-fw fa-lg fa-user"/> '+
+                  '<i class="fas fa-fw fa-lg fa-user"/> '+
                   data.UNAME+
                 '</span>'+
                 '<span>'+
-                  '<i class="fa fa-fw fa-lg fa-clock-o"/> '+
+                  '<i class="fas fa-fw fa-lg fa-clock-o"/> '+
                   Humanize.prettyTimeAgo(data.STIME)+
                   ' - '+
                   'ID: '+
@@ -405,6 +411,16 @@ define(function(require) {
                 '</span>'+
               '</li>');
 
+          var vcenter_info = "";
+          if(data.MONITORING.VCENTER_GUEST_STATE){
+            vcenter_info = "<thead><tr><th>" + Locale.tr("vCenter information") + "</th></tr></thead><tbody>" +
+            "<tr><td>" + Locale.tr("GUEST STATE") + "</td><td>" + data.MONITORING.VCENTER_GUEST_STATE + "</td>" +
+             "<td>" + Locale.tr("VMWARETOOLS RUNNING STATUS") + "</td><td>" +
+             data.MONITORING.VCENTER_VMWARETOOLS_RUNNING_STATUS + "</td></tr>" +
+             "<tr><td>" + Locale.tr("VMWARETOOLS VERSION") + "</td><td>" + data.MONITORING.VCENTER_VMWARETOOLS_VERSION + "</td><td>" + Locale.tr("VMWARETOOLS VERSION STATUS") + "</td><td>" + data.MONITORING.VCENTER_VMWARETOOLS_VERSION_STATUS + "</td></tr></tbody>";
+          }
+
+          $(".provision-sunstone-vcenter-list", context).html(vcenter_info);
           $(".provision_confirm_action:first", context).html("");
 
           $(".provision_info_vm", context).css('visibility', 'visible');
@@ -493,6 +509,7 @@ define(function(require) {
 
         var vm_id = context.attr("vm_id");
         var template_name = $('.provision_snapshot_name', context).val();
+        var template_description = $('.provision_snapshot_description', context).val();
         var persistent =
           ($('input[name=provision_snapshot_radio]:checked').val() == "persistent");
 
@@ -501,6 +518,7 @@ define(function(require) {
             id: vm_id,
             extra_param: {
               name : template_name,
+              description: template_description,
               persistent : persistent
             }
           },
@@ -839,6 +857,9 @@ define(function(require) {
           case OpenNebulaVM.LCM_STATES.PROLOG_MIGRATE_POWEROFF:
           case OpenNebulaVM.LCM_STATES.PROLOG_MIGRATE_SUSPEND:
           case OpenNebulaVM.LCM_STATES.PROLOG_MIGRATE_UNKNOWN:
+          case OpenNebulaVM.LCM_STATES.DISK_RESIZE:
+          case OpenNebulaVM.LCM_STATES.DISK_RESIZE_POWEROFF:
+          case OpenNebulaVM.LCM_STATES.DISK_RESIZE_UNDEPLOYED:
             state_color = 'running';
             state_str = Locale.tr("RUNNING");
             break;
@@ -947,7 +968,7 @@ define(function(require) {
   }
 
   function get_provision_ips(data) {
-    return '<i class="fa fa-fw fa-lg fa-globe"></i> ' + OpenNebula.VM.ipsStr(data, ', ');
+    return '<i class="fas fa-fw fa-lg fa-globe"></i> ' + OpenNebula.VM.ipsStr(data, ', ');
   }
 
   // @params

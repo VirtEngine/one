@@ -1,5 +1,5 @@
 {{! -------------------------------------------------------------------------- }}
-{{! Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                }}
+{{! Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                }}
 {{!                                                                            }}
 {{! Licensed under the Apache License, Version 2.0 (the "License"); you may    }}
 {{! not use this file except in compliance with the License. You may obtain    }}
@@ -29,6 +29,7 @@
     <div class="medium-6 columns">
       <input type="text" id="vm_name" class="provision-input" placeholder="{{tr "Virtual Machine Name"}}"/>
     </div>
+    {{#isFeatureEnabled "instantiate_persistent"}}
     <div class="large-3 medium-6 columns">
       <div class="switch left">
         <input class="switch-input instantiate_pers" id="instantiate_pers" type="checkbox">
@@ -41,6 +42,7 @@
         {{{tip (tr "Creates a private persistent copy of the template plus any image defined in DISK, and instantiates that copy")}}}
       </label>
     </div>
+    {{/isFeatureEnabled}}
     <div class="large-3 medium-6 columns">
       <button href="#" class="button success expanded" type="submit">{{tr "Create"}}</button>
       <div data-alert class="label alert-box-error" hidden></div>
@@ -56,7 +58,7 @@
               <span class="selected_template" hidden>
                 <span class="provision-logo selected_template_logo"></span>
                 <span class="selected_template_name"></span>
-                <span class=""> <i class="fa fa-lg fa-pencil"/></span>
+                <span class=""> <i class="fas fa-lg fa-pencil"/></span>
               </span>
             </a>
             <div id="provision_dd_template" class="accordion-content" data-tab-content>
@@ -75,7 +77,7 @@
                       </select>
                     </div>
                     <div class="medium-4 columns">
-                      <button type="button" data-toggle="provisionVMInstantiateLabelsDropdown" class="secondary button dropdown"> <i class="fa fa-tags"/> {{tr "Labels"}}
+                      <button type="button" data-toggle="provisionVMInstantiateLabelsDropdown" class="secondary button dropdown"> <i class="fas fa-tags"/> {{tr "Labels"}}
                       </button>
                       <div id="provisionVMInstantiateLabelsDropdown" class="dropdown-pane large labels-dropdown" data-dropdown>
                       </div>
@@ -121,6 +123,31 @@
   <div class="row">
     <div class="small-12 columns">
       <div class="provision_network_selector"></div>
+    </div>
+  </div>
+  <div class="row provision_vmgroup" hidden="true">
+    <div class="small-12 columns vmgroupContext{{element.ID}}">
+      <fieldset>
+        <legend>
+          <i class="fas fa-globe"></i> {{tr "VM Group"}}
+        </legend>
+        <div>
+          <a class="button small provision_add_vmgroup">
+            <i class="fas fa-lg fa-plus-circle add_vmgroup"></i> {{tr "VM Group"}}
+          </a>
+        </div>
+        <div class="provision_vmgroup_selector"></div>
+      </fieldset>
+    </div>
+  </div>
+  <div class="row provision_ds" hidden="true">
+    <div class="small-12 columns dsContext{{element.ID}}">
+      <fieldset>
+        <legend>
+          <i class="fas fa-globe"></i> {{tr "Datastore"}}
+        </legend>
+        <div class="provision_ds_selector" data-tab-content></div>
+      </fieldset>
     </div>
   </div>
 </form>

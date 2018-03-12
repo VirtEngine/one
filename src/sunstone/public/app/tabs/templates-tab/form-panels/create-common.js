@@ -1,5 +1,5 @@
-/* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+ /* -------------------------------------------------------------------------- */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -18,7 +18,7 @@ define(function(require) {
   /*
     DEPENDENCIES
    */
-
+  var Notifier = require('utils/notifier');
   var BaseFormPanel = require('utils/form-panels/form-panel');
   var Sunstone = require('sunstone');
   var Locale = require('utils/locale');
@@ -43,9 +43,11 @@ define(function(require) {
     require('./create/wizard-tabs/network'),
     require('./create/wizard-tabs/os'),
     require('./create/wizard-tabs/io'),
+    require('./create/wizard-tabs/actions'),
     require('./create/wizard-tabs/context'),
     require('./create/wizard-tabs/scheduling'),
     require('./create/wizard-tabs/hybrid'),
+    require('./create/wizard-tabs/vmgroup'),
     require('./create/wizard-tabs/other')
   ]
 
@@ -164,14 +166,8 @@ define(function(require) {
     // part of an array, and it is filled in different tabs, the $.extend deep
     // merge can't work. We define an auxiliary attribute for it.
 
-    if (templateJSON["VCENTER_PUBLIC_CLOUD"]) {
-      if (templateJSON['PUBLIC_CLOUD'] == undefined) {
-        templateJSON['PUBLIC_CLOUD'] = [];
-      }
-
-      templateJSON['PUBLIC_CLOUD'].push(templateJSON["VCENTER_PUBLIC_CLOUD"]);
-
-      delete templateJSON["VCENTER_PUBLIC_CLOUD"];
+    if (templateJSON['PUBLIC_CLOUD'] == undefined) {
+      templateJSON['PUBLIC_CLOUD'] = [];
     }
 
     // PCI with TYPE=NIC is not defined in the 'other' tab. Because it is
@@ -204,13 +200,14 @@ define(function(require) {
   }
 
   function _submitAdvanced(context) {
-    var template = $('textarea#template', context).val();
+    var templateStr = $('textarea#template', context).val();
+
     if (this.action == "create") {
-      Sunstone.runAction(this.resource+".create", {"vmtemplate": {"template_raw": template}});
+      Sunstone.runAction(this.resource+".create", {"vmtemplate": {"template_raw": templateStr}});
       return false;
 
     } else if (this.action == "update") {
-      Sunstone.runAction(this.resource+".update", this.resourceId, template);
+      Sunstone.runAction(this.resource+".update", this.resourceId, templateStr);
       return false;
     }
   }

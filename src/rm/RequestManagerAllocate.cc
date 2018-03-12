@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -20,6 +20,7 @@
 #include "PoolObjectSQL.h"
 #include "MarketPlacePool.h"
 #include "MarketPlaceAppPool.h"
+#include "VirtualMachineDisk.h"
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -86,7 +87,7 @@ bool VirtualMachineAllocate::allocate_authorization(
 
     if ( att.uid != 0 && att.gid != GroupPool::ONEADMIN_ID )
     {
-        if (ttmpl->check(aname))
+        if (ttmpl->check_restricted(aname))
         {
             att.resp_msg = "VM Template includes a restricted attribute "+aname;
             failure_response(AUTHORIZATION, att);
@@ -113,14 +114,31 @@ bool VirtualMachineAllocate::allocate_authorization(
 
     VirtualMachineTemplate aux_tmpl(*ttmpl);
 
-    VirtualMachine::disk_extended_info(att.uid, &aux_tmpl);
+    VirtualMachineDisks::extended_info(att.uid, &aux_tmpl);
 
     if ( quota_authorization(&aux_tmpl, Quotas::VIRTUALMACHINE, att) == false )
     {
         return false;
     }
 
-    return true;
+    vector<Template *> ds_quotas;
+    vector<Template *>::iterator it;
+
+    bool ds_quota_auth = true;
+
+    VirtualMachineDisks::image_ds_quotas(&aux_tmpl, ds_quotas);
+
+    for ( it = ds_quotas.begin() ; it != ds_quotas.end() ; ++it )
+    {
+        if ( quota_authorization(*it, Quotas::DATASTORE, att) == false )
+        {
+            ds_quota_auth = false;
+        }
+
+        delete *it;
+    }
+
+    return ds_quota_auth;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -495,9 +513,10 @@ void ImageAllocate::request_execute(xmlrpc_c::paramList const& params,
 
         // ------------ Check template for restricted attributes  --------------
 
-        if ( att.uid != UserPool::ONEADMIN_ID && att.gid != GroupPool::ONEADMIN_ID )
+        if ( att.uid != UserPool::ONEADMIN_ID &&
+                att.gid != GroupPool::ONEADMIN_ID )
         {
-            if (tmpl->check(aname))
+            if (tmpl->check_restricted(aname))
             {
                 att.resp_msg = "Template includes a restricted attribute "+aname;
                 failure_response(AUTHORIZATION, att);
@@ -510,7 +529,7 @@ void ImageAllocate::request_execute(xmlrpc_c::paramList const& params,
         // ------------------ Check permissions and ACLs  ----------------------
         tmpl->to_xml(tmpl_str);
 
-        ar.add_create_auth(att.uid, att.gid, auth_object, tmpl_str); // CREATE IMAGE
+        ar.add_create_auth(att.uid, att.gid, auth_object, tmpl_str);
 
         ar.add_auth(AuthRequest::USE, ds_perms); // USE DATASTORE
 
@@ -534,7 +553,7 @@ void ImageAllocate::request_execute(xmlrpc_c::paramList const& params,
 
     // ------------------------- Check persistent only -------------------------
 
-    tmpl->get("PERSISTENT", persistent_attr);
+    persistent_attr = Image::test_set_persistent(tmpl, att.uid, att.gid, true);
 
     if ( ds_persistent_only && persistent_attr == false )
     {
@@ -631,7 +650,7 @@ bool TemplateAllocate::allocate_authorization(
     VirtualMachineTemplate * ttmpl = static_cast<VirtualMachineTemplate *>(tmpl);
 
     // ------------ Check template for restricted attributes -------------------
-    if (ttmpl->check(aname))
+    if (ttmpl->check_restricted(aname))
     {
         att.resp_msg = "VM Template includes a restricted attribute " + aname;
 
@@ -962,6 +981,8 @@ Request::ErrorCode ZoneAllocate::pool_allocate(
         return Request::INTERNAL;
     }
 
+    Nebula::instance().get_frm()->add_zone(id);
+
     return Request::SUCCESS;
 }
 
@@ -1067,7 +1088,7 @@ bool VirtualRouterAllocate::allocate_authorization(
 
     if (quota_authorization(tmpl, Quotas::VIRTUALROUTER, att, att.resp_msg) == false)
     {
-        return AUTHORIZATION;
+        return false;
     }
 
     return true;
@@ -1187,6 +1208,28 @@ Request::ErrorCode MarketPlaceAppAllocate::pool_allocate(
     // Send request operation to market driver                                //
     // ---------------------------------------------------------------------- //
     if (marketm->import_app(id, mp_data, att.resp_msg) == -1)
+    {
+        return Request::INTERNAL;
+    }
+
+    return Request::SUCCESS;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+Request::ErrorCode VMGroupAllocate::pool_allocate(
+        xmlrpc_c::paramList const&  paramList,
+        Template *                  tmpl,
+        int&                        id,
+        RequestAttributes&          att)
+{
+    VMGroupPool * vmgpool = static_cast<VMGroupPool *>(pool);
+
+    int rc = vmgpool->allocate(att.uid, att.gid, att.uname, att.gname, att.umask
+        ,tmpl, &id, att.resp_msg);
+
+    if (rc < 0)
     {
         return Request::INTERNAL;
     }

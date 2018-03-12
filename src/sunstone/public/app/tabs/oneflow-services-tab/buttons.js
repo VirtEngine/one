@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -42,20 +42,21 @@ define(function(require) {
       tip: Locale.tr("Select the new group"),
       layout: "user_select"
     },
-    "Service.shutdown" : {
-      type: "action",
-      layout: "main",
-      text: Locale.tr("Shutdown")
-    },
     "Service.recover" : {
       type: "action",
       layout: "main",
       text: Locale.tr("Recover")
     },
+    "Service.shutdown" : {
+      type: "confirm",
+      text: Locale.tr("Terminate"),
+      layout: "vmsdelete_buttons",
+      tip: Locale.tr("This will remove information from non-persistent hard disks")
+    },
     "Service.delete" : {
       type: "confirm",
       text: Locale.tr("Delete"),
-      layout: "del",
+      layout: "vmsdelete_buttons",
       tip: Locale.tr("This will delete the selected services")
     },
     "Service.edit_labels" : {

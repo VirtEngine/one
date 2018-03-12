@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                */
+/* Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -18,13 +18,14 @@ define(function(require) {
   /*
     DEPENDENCIES
    */
-
+  var Notifier = require('utils/notifier');
 //  require('foundation.tab');
   var BaseFormPanel = require('utils/form-panels/form-panel');
   var Sunstone = require('sunstone');
   var Locale = require('utils/locale');
   var Tips = require('utils/tips');
   var RoleTab = require('tabs/oneflow-templates-tab/utils/role-tab');
+  var TemplateUtils = require('utils/template-utils');
 
   /*
     TEMPLATES
@@ -110,7 +111,7 @@ define(function(require) {
             <textarea class="service_network_description"/>\
           </td>\
           <td>\
-            <a href="#"><i class="fa fa-times-circle remove-tab"></i></a>\
+            <a href="#"><i class="fas fa-times-circle remove-tab"></i></a>\
           </td>\
         </tr>');
     });
@@ -239,13 +240,12 @@ define(function(require) {
   }
 
   function _submitAdvanced(context) {
-    var json_template = $('textarea#template', context).val();
-
+    var templateStr = $('textarea#template', context).val();
     if (this.action == "create") {
-      Sunstone.runAction("ServiceTemplate.create", JSON.parse(json_template) );
+      Sunstone.runAction("ServiceTemplate.create", JSON.parse(templateStr) );
       return false;
     } else if (this.action == "update") {
-      Sunstone.runAction("ServiceTemplate.update", this.resourceId, json_template);
+      Sunstone.runAction("ServiceTemplate.update", this.resourceId, templateStr);
       return false;
     }
   }
@@ -399,7 +399,6 @@ define(function(require) {
         $(".networks_role", role_section).show();
       }
 
-      $(".vm_template_contents", role_section).val("");
 
       $.each(selected_networks, function(){
         $(".service_network_checkbox[value='"+this+"']", role_section).attr('checked', true).change();
@@ -426,11 +425,11 @@ define(function(require) {
     var a = $("<li class='tabs-title'>\
       <a class='text-center' id='"+html_role_id+"' href='#"+html_role_id+"Tab'>\
         <span>\
-          <i class='off-color fa fa-cube fa-3x'/>\
+          <i class='off-color fas fa-cube fa-3x'/>\
           <br>\
           <span id='role_name_text'>"+Locale.tr("Role ")+role_id+"</span>\
         </span>\
-        <i class='fa fa-times-circle remove-tab'></i>\
+        <i class='fas fa-times-circle remove-tab'></i>\
       </a>\
     </li>").appendTo($("ul#roles_tabs", dialog));
 

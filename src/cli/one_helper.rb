@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2016, OpenNebula Project, OpenNebula Systems                #
+# Copyright 2002-2018, OpenNebula Project, OpenNebula Systems                #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -28,7 +28,7 @@ include OpenNebula
 module OpenNebulaHelper
     ONE_VERSION=<<-EOT
 OpenNebula #{OpenNebula::VERSION}
-Copyright 2002-2016, OpenNebula Project, OpenNebula Systems
+Copyright 2002-2018, OpenNebula Project, OpenNebula Systems
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may
 not use this file except in compliance with the License. You may obtain
@@ -37,8 +37,10 @@ EOT
 
     if ONE_LOCATION
         TABLE_CONF_PATH=ONE_LOCATION+"/etc/cli"
+        VAR_LOCATION=ONE_LOCATION+"/var" if !defined?(VAR_LOCATION)
     else
         TABLE_CONF_PATH="/etc/one/cli"
+        VAR_LOCATION="/var/lib/one" if !defined?(VAR_LOCATION)
     end
 
     EDITOR_PATH='/usr/bin/vi'
@@ -352,6 +354,13 @@ EOT
             :name   => 'report_ready',
             :large  => '--report_ready',
             :description => 'Sends READY=YES to OneGate, useful for OneFlow'
+        },
+        {
+            :name   => 'vcenter_vm_folder',
+            :large  => '--vcenter_vm_folder path',
+            :format => String,
+            :description => "In a vCenter environment sets the the VMs and Template folder where the VM will be placed in." \
+            " The path uses slashes to separate folders. For example: --vcenter_vm_folder \"/Management/VMs\""
         }
     ]
 
@@ -408,8 +417,8 @@ EOT
                 else
                     sync = true
                 end
-
-                @@client=OpenNebula::Client.new(secret, endpoint, :sync => sync)
+                options[:sync] = sync
+                @@client=OpenNebula::Client.new(secret, endpoint, options)
             end
         end
 
@@ -481,6 +490,7 @@ EOT
                 return 0
             end
         end
+
 
         def list_pool(options, top=false, filter_flag=nil)
             if options[:describe]
@@ -769,6 +779,27 @@ EOT
         end
 
         OneHelper.name_to_id(name, pool, poolname)
+    end
+
+    def OpenNebulaHelper.size_in_mb(size)
+        m = size.match(/^(\d+(?:\.\d+)?)(m|mb|g|gb)?$/i)
+
+        if !m
+            # return OpenNebula::Error.new('Size value malformed')
+            return -1, 'Size value malformed'
+        else
+            multiplier=case m[2]
+            when /(g|gb)/i
+                1024
+            else
+                1
+            end
+
+            value=m[1].to_f*multiplier
+
+            # return value.ceil
+            return 0, value.ceil
+        end
     end
 
     def OpenNebulaHelper.rname_to_id_desc(poolname)
@@ -1105,6 +1136,8 @@ EOT
             template<<' ]' << "\n"
         end
 
+        template<<"VCENTER_VM_FOLDER=#{options[:vcenter_vm_folder]}\n" if options[:vcenter_vm_folder]
+
         context=create_context(options)
         template<<context if context
 
@@ -1232,6 +1265,23 @@ EOT
         if error_message
             File.unlink(path)
             return OpenNebula::Error.new("Remote server error: #{error_message}")
+        end
+    end
+
+    def OpenNebulaHelper.level_lock_to_str(str)
+        level = str.to_i
+        if level == 0
+            "None"
+        elsif level == 1
+            "Use"
+        elsif level == 2
+            "Manage"
+        elsif level == 3
+            "Admin"
+        elsif level == 4
+            "All"
+        else
+            "-"
         end
     end
 end
